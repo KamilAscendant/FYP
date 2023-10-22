@@ -1,0 +1,209 @@
+A Chatbot to Manage 
+Security Services
+
+
+
+
+Project Plan
+Kamil Abrar 100970803
+BSc Computer Science (InfoSec) Final year Project
+
+
+
+
+Supervised by Dr Fauzia Idrees
+Department of Information Security
+
+
+
+
+
+
+
+
+
+
+
+Abstract:
+
+The modern security landscape is one where the human elements of defence are no longer sufficient to handle threats alone. Automated security tools
+are now required to protect organisations from attack. However, as the tools themselves are useless without operators, human involvement remains 
+irreplaceable.
+The use of messaging platforms like Microsoft Teams and Slack surged during the pandemic, and they are now firmly part of almost all large 
+companies. These are not simply chat platforms, but also offer many productivity tools intended to help workers carry out their duties, such as 
+reminders and to-do lists. A major part of these two platforms is their ability to handle 'bots' - automated messaging assistants that can be 
+integrated with external platforms using APIs. My intent is to create such a bot and integrate it with deployed security tools to allow them to be 
+managed through the chat platform. Microsoft Teams has a significantly higher userbase and is the platform I am more familiar with, and so I am 
+electing to use it for the project. [1]
+It is significantly easier for a user to understand how to use a chatbot than it is for them to learn the detailed workings of a security platform 
+- knowledge in the functionality of a single bot, which almost every user will have experience with, transfers over to the usage of others. 
+Microsoft Teams has a dedicated bot development framework [2] that can be used to easily create a conversational bot that can integrate with 
+external services. 
+Handling security threats with in-house solutions may technically be possible, but requires significant resource investment and subject matter 
+expertise, as well as development skill. It also carries a few unique risks. For example, an internal team might not be as rigorous as a dedicated 
+security company's developers, leaving vulnerabilities in the platform through either lack of skill or knowledge.  Instead, organisations often rely on tools created and maintained by outside vendors. These tools are actively designed and maintained by security professionals, and usually operate at a much higher standard than cobbled-together internal solutions. The philosophy behind design is different, however - instead of a tool being made to handle every aspect of a company's security, they are usually made to fill a specific niche. That way, companies can only purchase the aspects they need, and can even mix and match them to fit business requirements.
+These tools tend to fall within several general areas, and platforms are identified by descriptors. Some of the major ones are SIEMs, SOARs, XDR 
+platforms and EDR platforms. A SIEM, or a Security Information and Event Management system, is a tool that collects inputs from various sources 
+across a company's systems, identifies any unusual events and analyses them. If a possible threat is found, a security alert is generated for 
+human analysts to review. [3] SOARs, or Security Orchestration, Automation and Response platforms, do this and more, providing tools to actively 
+manage systems and handle threats. The two are often used in concert. [4] XDRs(Extended Detection and Response systems) are similar in aim to SIEMs 
+but not in function - rather than analysing large sets of data, they pair endpoint data with additional telemetry from outside sources. [5] EDRs 
+(Endpoint Detection and Response) are a now relatively obsolete platform that only handled the endpoint data and responses that XDRs do. In terms of functionality, they have been entirely eclipsed.
+My primary goal for this project is to successfully integrate a SIEM platform's API into the bot, allowing users to receive alerts and manage the 
+system through the Microsoft Teams platform. Since Teams is available across many platforms, the SIEM will functionally be made portable and 
+always-available, irrespective of their location or device. Furthermore, by using Microsoft Team's built-in access management tools, access to the 
+SIEM's systems can be assigned as necessary, following the principle of least privilege. Often security services have wide-ranging powers that an 
+insider who has access to the entire platform can manipulate - this will aid in reducing that risk. [6]
+For this project, I have decided upon a particular platform: Wazuh - a free security platform that integrates SIEM and XDR capabilities into a 
+single solution and provides an external open-source API. [7] I have experience not only with Wazuh's implementation but also with the integration 
+of its API into external services.
+I intend to carry out the integration in stages. First, I will configure the bot to output events and alerts from the SIEM into channels, where 
+users can view them and ask for different windows of events to be displayed. Then, I will gradually integrate the rest of the SIEM management 
+tools, allowing users to actively manage the system through the chatbot. I am taking this staggered approach to aid in development - rather than 
+attempting to implement the entire system at once, I can spread it out into releases. This will be an extremely complex process, as the SIEM is 
+very intricate, but I am confident that it will be completed on schedule. If this is done on time, I will follow up by integrating Wazuh's XDR 
+capabilities into the system - while it is one platform, the functionalities are divided enough for only one aspect to be implemented at a time.
+My eventual goal is to have a chatbot that can manage the functioning of a SIEM and XDR platform with agents on multiple devices, allowing users 
+to monitor activities and take necessary actions without restricting them to specific fixed locations or computers. By expanding the API through a 
+chatbot, we can use natural language processing to significantly lower the barrier to use of such platforms, improving the security performance of 
+an organisation and reducing the burden of training individual users.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Timeline:
+
+Term 1
+Weeks 1-2: In the first two weeks of term, I will evaluate and decide between a chatbot for Microsoft Teams and Slack. I will then identify security 
+services that can possibly be integrated with the bot, before choosing one to focus on. By doing so, I can narrow the scope of the project.
+Week 3: I will complete and submit the project plan in week 3 of term, including within it specifications for the plan and details of the services I 
+intend to make use of.
+Weeks 4-5: In these weeks, I will set up my development environment for the project. I will create the basic framework of the bot, set up the Wazuh 
+agents across several virtual machines simulating different devices, and the Wazuh server. 
+Weeks 6-7: By the end of week 6, I want to set up the bot to output alerts from Wazuh's server for the users to go through. Functionality to parse 
+previous events and search particular alerts should be added within this timeframe as well.
+Weeks 8-10: In this phase of the project, I want to implement more of Wazuh's server functionality into the bot - for example, changing agent 
+settings. The aim is to have the bulk of the work on Wazuh's SIEM done by the end of this period, to allow myself time to prepare for my interim 
+report and preparation.
+Weeks 11-12: This time is primarily used for working on the interim report and deliverables, as well as the report. Any excess time will be used 
+to continue developing the functionality of the bot.
+
+Term 2:
+Weeks 1-3: In these weeks, I want to finish implementing all the feasible SIEM functionality into the bot. Wazuh has an extremely detailed API, and 
+I am only familiar with the parts I have mentioned implementing up until now - I plan to use the time leading up to this to gain increased 
+familiarity with it, so I can better judge which components to implement. As a result, the timeframe of term 2 is less defined than term 1.
+Week 4: This will be used for a break in active development - by here, the SIEM should be almost entirely integrated. I want to use this week to 
+consolidate my progress, focus on writing the documentation for the features up until now and put all my progress up until then into my report.
+Weeks 5-8: I intend to use this time period to implement Wazuh's XDR functionality into the bot. By now, many of the base functions of the platform 
+will already be integrated into it - this will make it significantly less resource intensive than previous phases, as much of the framework will 
+already be there. I am less familiar with the XDR aspects of the platform than the SIEM ones - it is possible that I run into a roadblock here. For 
+that reason, I have given it a large block of time, hopefully enough to implement if not the entire system than enough to maintain basic XDR 
+functionality.
+Weeks 9-10: These weeks will be used to update the documentation, polish the bot's interactions, deal with any major bugs, and complete the report. 
+I will also be preparing for the final demonstration.
+Week 11: Submission.
+
+Risks and Mitigations
+
+Lack of Experience - High Risk, Low Severity: While I have experience with the tools being integrated into the chatbot, I do not have experience 
+with the chatbot itself. It is possible that I run into a situation where I struggle to implement Wazuh's API functions into the chatbot's 
+interface, and if too much time is spent it could bottleneck the development of the whole project.
+Mitigation: I have allocated more time than I expect to need for each phase of the API's implementation. If I run into a significant problem, I 
+will have a buffer in which to resolve it before it affects the rest of the project. To resolve the problem, I will make use of all available 
+resources, including my supervisor, online community for the tools in question and developer resources.
+Hardware Failure - Low Risk, High Severity: I intend for the development to be done mostly on my personal device and on virtual machines hosted on 
+the same. In the event of a failure where the data on my laptop is lost, it could cripple the project.
+	Mitigation: Proper use of Version Control Software will ensure that in the event of any data 	loss from my local machine, my progress will be 
+	maintained. I will regularly commit my work	to the provided GitLab server, both guarding myself against any issues like this and keeping a 	
+	steady record of my progress.
+Insider Threats - Low Risk, High Severity: Security tools such as Wazuh have high degrees of system access and an insider could do significant 
+damage by actions such as altering settings or deleting records through them.
+	Mitigation: Microsoft Teams allows access to channels to be restricted to specific users. The 	bot can be configured to only allow specific 
+	commands from specific channels, therefore 	ensuring that unauthorized users could not make malicious use of its systems. In addition, 	actions 
+	through the bot could be logged to ensure that they could be traced later.
+Malicious Input Injection: A user could hypothetically pass dangerous data to the bot, attempting to perform an SQL or XSS injection attack. 
+	Mitigation: Input will be sanitized to ensure dangerous commands cannot be passed	through the chatbot.
+Out of Scope Implementation of Wazuh: I will only be able to simulate so many different scenarios and use cases. It is possible that even after 
+testing, there will be blind spots left in my implementation.
+	Mitigation: Critical functions will be prioritized for integration and testing, and checked 	rigorously for flaws before moving on to the 
+	next stage of development.
+Tool Complexity: Wazuh is an extremely detailed tool with many features. It is conceivable that a user's input could be taken as referring to 
+multiple different features, in which case the bot could possibly interface with the wrong system.
+	Mitigation: Only keeping specific features in the bot's scope and making it clear in the 	documentation what the supported ones are, 
+	ensuring users only ask for approved 	functions. In addition, clarifying which feature a user is attempting to use if two similar	ones are 
+	implemented.
+Abbreviations:
+
+SIEM: Security Information and Event Manager
+XDR: Extended Detection and Response
+SOAR: Security Orchestration, Administration and Response
+EDR: Endpoint Detection and Response
+
+Glossary:
+
+Wazuh: A free, open-source security platform with XDR and SIEM capabilities.
+GitLab: A cloud-hosted Version Control System, an account on which is provided by the department.
+Microsoft Teams: A productivity tool owned by Microsoft, built into Windows. Capable of using chatbots integrated with external platforms.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+References
+
+[1] 
+D. CURRY, "Business of Apps," Business of Apps, 18 July 2023. [Online]. Available: https://www.businessofapps.com/data/microsoft-teams-statistics/. [Accessed 3 October 2023].
+This source is the only recent comparison of the usage levels of different productivity tools that I could find.
+[2] 
+Microsoft, "Microsoft Teams Create A Bot," 25 4 2023. [Online]. Available: 
+https://learn.microsoft.com/en-us/microsoftteams/platform/resources/bot-v3/bots-create. [Accessed 3 10 2023].
+This is the Microsoft documentation page for creating a bot. While I intend to make use of other tutorials and sources as well, this is the primary 
+developer documentation and thus was appropriate to source.
+[3] 
+P. K. M. a. L. Z. S. Bhatt, "The Operational Role of Security Information and Event Management Systems," IEEE Security & Privacy, vol. 12, no. 5, 
+pp. 35-41, Sept.-Oct 2014. 
+This paper goes into the role a SIEM plays in an organization's security management - it was an important part of my decision to focus primarily 
+on the implementation of a SIEM.
+[4] 
+A. Aarness, "XDR VS SIEM VS SOAR," CrowdStrike, 10 3 2022. [Online]. Available: 
+https://www.crowdstrike.com/cybersecurity-101/what-is-xdr/xdr-vs-siem-vs-soar/. [Accessed 3 10 2023].
+CrowdStrike is one of the leading security companies - this is an easily understandable explanation of the link between the three security 
+platforms I explained, as well as providing an easy comparison of them.
+[5] 
+A. Mellen, "XDR Defined: Giving Meaning To Extended Detection And Response," Forrester, 28 4 2021. [Online]. Available: 
+https://www.forrester.com/blogs/xdr-defined-giving-meaning-to-extended-detection-and-response/. [Accessed 3 10 2023].
+This blog post is an excerpt of a larger Forrester report into security trends and how the development of XDR has followed and affected them. As 
+the report costs $1500 to access, I have cited the blog instead.
+[6] 
+Palo Alto, "What is the Principle of Least Privilege," [Online]. Available: 
+https://www.paloaltonetworks.com/cyberpedia/what-is-the-principle-of-least-privilege. [Accessed 3 10 2023].
+[7] 
+Wazuh, "Wazuh API Reference Manual," [Online]. Available: https://documentation.wazuh.com/current/user-manual/api/reference.html. 
+[Accessed 3 10 2023].
+This is the developer's documentation for Wazuh's API, which is the primary source I intend to make use of during development. I will take 
+advantage of other sources as well, such as Wazuh's online community on Reddit, but this is the first-party documentation and so an essential part 
+of the project.
+
+

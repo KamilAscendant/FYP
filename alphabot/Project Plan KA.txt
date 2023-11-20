@@ -204,6 +204,6 @@ Wazuh, "Wazuh API Reference Manual," [Online]. Available: https://documentation.
 [Accessed 3 10 2023].
 This is the developer's documentation for Wazuh's API, which is the primary source I intend to make use of during development. I will take 
 advantage of other sources as well, such as Wazuh's online community on Reddit, but this is the first-party documentation and so an essential part 
-of the project.
+gtof the project.
 
 

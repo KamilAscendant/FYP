@@ -22,11 +22,11 @@ export class TeamsBot extends TeamsActivityHandler {
 
     this.likeCountObj = { likeCount: 0 };
 
-    this.onMessage(async (context, next) => {
+    this.onMessage(async (turnContext, next) => {
       console.log("Running with Message Activity.");
 
-      let txt = context.activity.text;
-      const removedMentionText = TurnContext.removeRecipientMention(context.activity);
+      let txt = turnContext.activity.text;
+      const removedMentionText = TurnContext.removeRecipientMention(turnContext.activity);
       if (removedMentionText) {
         // Remove the line break
         txt = removedMentionText.toLowerCase().replace(/\n|\r/g, "").trim();
@@ -36,13 +36,20 @@ export class TeamsBot extends TeamsActivityHandler {
       switch (txt) {
         case "welcome": {
           const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
-          await context.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+          await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
           break;
         }
         case "learn": {
           this.likeCountObj.likeCount = 0;
           const card = AdaptiveCards.declare<DataInterface>(rawLearnCard).render(this.likeCountObj);
-          await context.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+          await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+          break;
+        }
+
+        case "hello": {
+          await turnContext.sendActivity('Hello there');
+          const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
+          await turnContext.sendActivity({attachments: [CardFactory.adaptiveCard(card)]});
           break;
         }
         /**

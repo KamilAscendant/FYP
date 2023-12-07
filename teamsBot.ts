@@ -10,7 +10,6 @@ import rawLearnCard from "./adaptiveCards/event.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 
 export interface DataInterface {
-  likeCount: number;
 }
 
 export class TeamsBot extends TeamsActivityHandler {

@@ -1,0 +1,19 @@
+{
+	"type": "AdaptiveCard",
+	"body": [
+		{
+			"type": "TextBlock",
+			"size": "Medium",
+			"weight": "Bolder",
+			"text": "Sorry :("
+		},
+		
+		{
+			"type": "TextBlock",
+			"text": "This is currently under construction. Try again soon!",
+			"wrap": true
+		}
+	],
+	"$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+	"version": "1.4"
+}

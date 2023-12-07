@@ -15,12 +15,12 @@
         "outline": "outline.png"
     },
     "name": {
-        "short": "ManagementBot-${{TEAMSFX_ENV}}",
-        "full": "full name for ManagementBot"
+        "short": "SecurityMessagingLogic-${{TEAMSFX_ENV}}",
+        "full": "full name for SecurityMessagingLogic"
     },
     "description": {
-        "short": "short description for ManagementBot",
-        "full": "full description for ManagementBot"
+        "short": "short description for SecurityMessagingLogic",
+        "full": "full description for SecurityMessagingLogic"
     },
     "accentColor": "#FFFFFF",
     "bots": [

@@ -1,0 +1,21 @@
+Week 2: Chosen Wazuh – experience from Systems. Not going to use Slack, will use Teams
+Week 3: Plan done
+Week 4: Installed Wazuh
+	Read API documentation for Wazuh – will Alerts work?? Can’t use Integrator.
+Week 5: Installed Bot Framework, Teams Toolkit
+Week 6: It says Hello World
+	Read ‘An Overview of Chatbot Technology’ – good things to keep in mind about making it 	interact with people nicely
+Week 7: 
+Week 8: Can’t use API to get Alerts. Will have to redeploy
+	Redeploying broke Wazuh 
+Week 9: Reinstalled Wazuh basic quickstart, tried and failed to get database part
+Week 10: Get List of Agents from Wazuh
+	Read ‘Why People Use Chatbots’
+	Read ‘Bot Integration to Website Application…’ – interesting, he did a lot of the same 		ideas especially using Adaptive Cards for individual items gotten from a webapp
+Week 11: Cleaned up interaction a bit, cards now flow
+	Tried to manually install Wazuh, deployment broken
+	Started Report
+	Started Presentation
+Week 12: Trying to redeploy Wazuh, not working
+	If I can’t fix it in time, I will have to submit it without a functioning connection
+Presentation Done

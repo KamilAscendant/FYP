@@ -95,7 +95,7 @@ export class TeamsBot extends TeamsActivityHandler {
       for (let cnt = 0; cnt < membersAdded.length; cnt++) {
         if (membersAdded[cnt].id) {
           await context.sendActivity('Hello there, friend!');
-          await context.sendActivity(membersAdded[cnt].id);
+          //await context.sendActivity(membersAdded[cnt].id);
           const card = AdaptiveCards.declareWithoutData(rawInitialiseCard).render();
           await context.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
           break;

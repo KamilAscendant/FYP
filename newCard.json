@@ -1,5 +1,5 @@
 {
-	"type": "AdaptiveCard",
+	"type": "EventInformation",
 	"body": [
 		{
 			"type": "TextBlock",

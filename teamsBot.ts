@@ -91,6 +91,10 @@ export class TeamsBot extends TeamsActivityHandler {
           await this.listActiveAgents(turnContext);
           break;
         }
+        case "ping": {
+          await this.handlePingCommand(turnContext);
+          break;
+        }
         //meant for going to the next and previous agents while they are displayed
         //case "Next":{
          // await this.agentNavigation(turnContext, 'nextAgent');
@@ -119,6 +123,9 @@ export class TeamsBot extends TeamsActivityHandler {
       }
       await next();
     });
+  }
+  handlePingCommand(turnContext: TurnContext) {
+    throw new Error("Method not implemented.");
   }
   private async listActiveAgents(turnContext: TurnContext): Promise<void> {
     const jwtToken = await this.authenticateUser('username', 'pwd'); //put new credentials here!! 

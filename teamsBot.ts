@@ -13,6 +13,7 @@ import rawAgentCard from "./adaptiveCards/agents.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 import rawSorryCard from "./adaptiveCards/Sorry.json";
 import axios, { AxiosRequestConfig } from 'axios';
+import { exec } from "child_process";
 export interface DataInterface {
 }
 
@@ -124,8 +125,19 @@ export class TeamsBot extends TeamsActivityHandler {
       await next();
     });
   }
-  handlePingCommand(turnContext: TurnContext) {
-    throw new Error("Method not implemented.");
+  private async handlePingCommand(turnContext: TurnContext): Promise<void> {
+    // Execute the ping command
+    exec('ping -c 4 8.8.8.8', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            turnContext.sendActivity("Failed to ping 8.8.8.8");
+            return;
+        }
+
+        // Send the result of the ping command back to the user
+        // Note: stdout will contain the ping command output
+        turnContext.sendActivity(`Ping result:\n\n${stdout}`);
+    });
   }
   private async listActiveAgents(turnContext: TurnContext): Promise<void> {
     const jwtToken = await this.authenticateUser('username', 'pwd'); //put new credentials here!! 

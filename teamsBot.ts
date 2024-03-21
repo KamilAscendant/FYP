@@ -20,8 +20,11 @@ export interface DataInterface {
 export class TeamsBot extends TeamsActivityHandler {
   runningAgents:any[] = [];
   currentAgent: number = 0;
+  jwtToken: any;
   constructor() {
     super();
+    const serverIP = 'https://10.2.186.6:55000/'
+    const wazuhEndpoint = 'https://10.2.187.6:55000/security/user/authenticate?raw=true';
 
     this.onMembersAdded(async (context, next) => {
       const membersAdded = context.activity.membersAdded;
@@ -43,14 +46,15 @@ export class TeamsBot extends TeamsActivityHandler {
     const removedMentionText = TurnContext.removeRecipientMention(turnContext.activity);
 
     if (removedMentionText) {
-      txt = removedMentionText.replace(/\n|\r/g, "").trim().toLowerCase(); // Normalize input to lowercase
+      txt = removedMentionText.replace(/\n|\r/g, "").trim().toLowerCase(); // Normalize input to lowercase, remove newlines etc
     }
 
       console.log(txt);
       // Trigger command by IM text
+
       switch (txt) {
-        //basic choice between event and agent viewer
-        case "Hello": {
+
+        case "hello": {
           console.log('hmm'); //debugging
           const card = AdaptiveCards.declareWithoutData(rawInitialiseCard).render();
           await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
@@ -58,23 +62,18 @@ export class TeamsBot extends TeamsActivityHandler {
         }
 
         //intro statement, in full release will be brought up to the first thing said
-        case "Introduction":{
-          await turnContext.sendActivity("Hi! I'm WazuhBot, a management chatbot for your Wazuh installation.");
-          await turnContext.sendActivity("In full release this is where you'll input your user details and Wazuh installation");
-          await turnContext.sendActivity("You can interact with me by typing commands like 'Agents' or 'List.'");
-          await turnContext.sendActivity("If you're new, try typing 'Help' to see available commands.");
-          await turnContext.sendActivity("For now, why don't you say Hello!");
+        case "introduction":{
+          await this.introInteraction(turnContext);
+          break
         }
 
-        case "Help": {
-          await turnContext.sendActivity("Sure! Here are some commands you can use:");
-          await turnContext.sendActivity("'Introduction': Learn more about WazuhBot.");
-          await turnContext.sendActivity("'Agents': View and manage Wazuh agents.");
-          await turnContext.sendActivity("'List': List all agents in your Wazuh installation.");
-          break;
+        case "help": {
+          await this.handleHelp(turnContext);
+          break
         }
+
         //loads the card that gives you the choice between listing and deleting agents
-        case "Agents": {
+        case "agents": {
           const card = AdaptiveCards.declare<DataInterface>(rawAgentCard).render();
           await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
           break;
@@ -83,19 +82,21 @@ export class TeamsBot extends TeamsActivityHandler {
         //used for testing authentication
         case "auth":{
           console.log('okay');
-          const jwtToken = await this.authenticateUser('admin', 'S2o.z?5gX8A*8+AZoaTr4hGWZaUw5a6?'); 
-          await turnContext.sendActivity(jwtToken);
-          console.log(jwtToken)
+          await this.authenticateUser('wazuh', 'wazuh');
+
         }
+
         //try and list all agents on the wazuh configuration
         case "list": {
           await this.listActiveAgents(turnContext);
           break;
         }
+
         case "ping": {
           await this.handlePingCommand(turnContext);
           break;
         }
+        
         //meant for going to the next and previous agents while they are displayed
         //case "Next":{
          // await this.agentNavigation(turnContext, 'nextAgent');
@@ -124,6 +125,22 @@ export class TeamsBot extends TeamsActivityHandler {
       }
       await next();
     });
+  }
+  private async handleHelp(turnContext: TurnContext) {
+    await turnContext.sendActivity("Sure! Here are some commands you can use:");
+    await turnContext.sendActivity("'Introduction': Learn more about WazuhBot.");
+    await turnContext.sendActivity("'Agents': View and manage Wazuh agents.");
+    await turnContext.sendActivity("'List': List all agents in your Wazuh installation.");
+  }
+  private async introInteraction(turnContext: TurnContext) {
+    const introMessage = `**Welcome to WazuhBot!**  
+      I'm a management chatbot for your Wazuh installation. Here's what you can do:  
+      - **Type 'Agents'** to view and manage Wazuh agents.  
+      - **Type 'List'** to list all agents in your Wazuh installation.  
+      - If you're new, try typing **'Help'** to see available commands.  
+
+    For now, why don't you say **Hello**!`;
+    await turnContext.sendActivity(introMessage);
   }
   private async handlePingCommand(turnContext: TurnContext): Promise<void> {
     // Execute the ping command
@@ -217,34 +234,28 @@ export class TeamsBot extends TeamsActivityHandler {
     }
   }
   //tries to authenticate to Wazuh using the basic authentication from the API (see reference document)
-  async authenticateUser(username: string, password: string): Promise<string | null> {
-    const wazuhEndpoint = 'https://10.2.184.250:443/security/user/authenticate'; //hardcoded for my wazuh - change this to your own setup
+  async authenticateUser(username, password) {
+    const wazuhEndpoint = 'https://10.2.187.6:55000/security/user/authenticate'; //hardcoded for my wazuh - change this to your own setup
     try {
-      // Perform basic authentication to get the JWT token
-      const response = await axios.post(
-        wazuhEndpoint,
-        {},
-        {
-          timeout:1500000,
-          auth: {
-            username: 'admin',
-            password: '',
-          },
-          httpsAgent: new https.Agent({ rejectUnauthorized: false }), // Disable SSL certificate validation
-        }
-      );
-      // Get JWT
-      const jwtToken = response.data?.data?.token;
+      const response = await axios.post(wazuhEndpoint, {}, {
+        auth: {
+          username: username,
+          password: password,
+        },
+        httpsAgent: new https.Agent({ 
+          rejectUnauthorized: false 
+        })
+      });
 
-        if (jwtToken) {
-        console.log('JWT token received:', jwtToken);
-        return jwtToken; // Return the obtained JWT 
-      } else {
-        console.log('Authentication failed'); 
-        return null; // Return null if no token
-      }
+
+      const jwtToken = response.data;
+      console.log('JWT token received:', jwtToken);
+
+      this.jwtToken = jwtToken;
+
+      return jwtToken;
     } catch (error) {
-      console.error('Error while authenticating user:', error);
+      console.error('Error while authenticating user:', error.message);
       return null; 
     }
   }

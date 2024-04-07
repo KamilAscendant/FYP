@@ -26,7 +26,7 @@ export class TeamsBot extends TeamsActivityHandler {
   private wazuhIP: string = 'https://192.168.1.176' //default IP address, left in for ease of use
   constructor() {
     super();
-    const serverIP = 'https://192.168.1.110:55000/'
+    //const serverIP = 'https://192.168.1.110:55000/'
     const wazuhEndpoint = 'https://192.168.1.110:55000/security/user/authenticate?raw=true';
 
     this.onMembersAdded(async (context, next) => {
@@ -359,6 +359,34 @@ export class TeamsBot extends TeamsActivityHandler {
     } else {
       await turnContext.sendActivity('No agents available.');
     }
+  }
+  private async sendChangeIPCard(turnContext: TurnContext) {
+    const changeIPCard = {
+      "type": "AdaptiveCard",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Enter the IPV4 Address of your Wazuh Server",
+                "wrap": true
+            },
+            {
+                "type": "Input.Text",
+                "id": "newIP",
+                "placeholder": "e.g., 255.255.255.255"
+            }
+        ],
+        "actions": [
+            {
+                "type": "Action.Submit",
+                "title": "Change IP",
+                "data": { "action": "changeIP" }
+            }
+        ],
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.4"
+    };
+    
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(changeIPCard)] });
   }
   //create an adaptive card to display an agent item. should have been its own card file, couldn't figure out how to make the import work
   createAgentCard(agent: any): any {

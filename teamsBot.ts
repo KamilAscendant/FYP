@@ -23,11 +23,11 @@ export class TeamsBot extends TeamsActivityHandler {
   runningAgents:any[] = [];
   currentAgent: number = 0;
   jwtToken: any;
-  private wazuhIP: string = 'https://192.168.1.176' //default IP address, left in for ease of use
+  private wazuhIP: string = '192.168.1.176' //default IP address, left in for ease of use
   constructor() {
     super();
     //const serverIP = 'https://192.168.1.110:55000/'
-    const wazuhEndpoint = 'https://192.168.1.110:55000/security/user/authenticate?raw=true';
+    const wazuhEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate?raw=true`;
 
     this.onMembersAdded(async (context, next) => {
       const membersAdded = context.activity.membersAdded;
@@ -97,6 +97,11 @@ export class TeamsBot extends TeamsActivityHandler {
 
         case "ping": {
           await this.handlePingCommand(turnContext);
+          break;
+        }
+
+        case "change IP": {
+          await this.sendChangeIPCard(turnContext);
           break;
         }
         
@@ -169,7 +174,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
   //tries to authenticate to Wazuh using the basic authentication from the API (see reference document)
   private async authenticateUser(username, password) {
-    const wazuhEndpoint = 'https://192.168.1.110:55000/security/user/authenticate'; //hardcoded IP - needs to be changed when deloying
+    const wazuhEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate`; //takes the wazuhIP stored - now works for diff setups
     try {
       const response = await axios.post(wazuhEndpoint, {}, {
         auth: {
@@ -204,7 +209,7 @@ export class TeamsBot extends TeamsActivityHandler {
       return;
     }
 
-    const agentsEndpoint = 'https://192.168.1.110:55000/agents';
+    const agentsEndpoint = 'https://${this.wazuhIP}:55000/agents';
     try {
       const response = await axios.get(agentsEndpoint, {
         headers: { 'Authorization': `Bearer ${this.jwtToken}` },
@@ -306,7 +311,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
   //this is meant to list the Agents. same VM network issue
   async listAgents(jwtToken: string): Promise<any> {
-    const agentsEndpoint = 'https://192.168.1.110:443/agents'; //hardcoded for my wazuh - change this to your own setup
+    const agentsEndpoint = 'https://${this.wazuhIP}:443/agents'; 
 
     try {
       const response = await axios.get(agentsEndpoint, {

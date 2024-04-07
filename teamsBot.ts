@@ -348,6 +348,18 @@ export class TeamsBot extends TeamsActivityHandler {
     }
   }
 
+  //handle the changeIP card being invoked
+  private async handleChangeIPResponse(turnContext: TurnContext) {
+    const userInput = turnContext.activity.value;
+    if (userInput && userInput.newIP) {
+      this.wazuhIP = userInput.newIP;
+      await turnContext.sendActivity(`Your Wazuh server IP has been changed to: ${userInput.newIP}`);
+      await turnContext.sendActivity('Say *Authenticate* if you want to log in to the new IP address, or use Help to view other commands')
+    } else {
+      await turnContext.sendActivity("Invalid IP address ");
+    }
+  }
+
   //use the createAgentCard to make an adaptive card of the first agent in the array
   async displayAgentDetails(turnContext: TurnContext): Promise<void> {
     if (this.runningAgents.length > 0) {

@@ -12,6 +12,8 @@ import rawInitialiseCard from "./adaptiveCards/initialise.json";
 import rawAgentCard from "./adaptiveCards/agents.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 import rawSorryCard from "./adaptiveCards/Sorry.json";
+import rawagentListCard from "./adaptiveCards/agentList.json"
+//const agentListCardTemplate = require("./adaptiveCards/agentList.json");
 import axios, { AxiosRequestConfig } from 'axios';
 import { exec } from "child_process";
 export interface DataInterface {
@@ -21,10 +23,11 @@ export class TeamsBot extends TeamsActivityHandler {
   runningAgents:any[] = [];
   currentAgent: number = 0;
   jwtToken: any;
+  private wazuhIP: string = 'https://192.168.1.176' //default IP address, left in for ease of use
   constructor() {
     super();
-    const serverIP = 'https://10.2.186.6:55000/'
-    const wazuhEndpoint = 'https://10.2.187.6:55000/security/user/authenticate?raw=true';
+    const serverIP = 'https://192.168.1.110:55000/'
+    const wazuhEndpoint = 'https://192.168.1.110:55000/security/user/authenticate?raw=true';
 
     this.onMembersAdded(async (context, next) => {
       const membersAdded = context.activity.membersAdded;
@@ -80,7 +83,7 @@ export class TeamsBot extends TeamsActivityHandler {
         }
 
         //used for testing authentication
-        case "auth":{
+        case "authenticate":{
           console.log('okay');
           await this.authenticateUser('wazuh', 'wazuh');
           break;
@@ -130,20 +133,25 @@ export class TeamsBot extends TeamsActivityHandler {
   private async handleHelp(turnContext: TurnContext) {
     await turnContext.sendActivity("Sure! Here are some commands you can use:");
     await turnContext.sendActivity("'Introduction': Learn more about WazuhBot.");
-    await turnContext.sendActivity("'Agents': View and manage Wazuh agents.");
-    await turnContext.sendActivity("'List': List all agents in your Wazuh installation.");
+    await turnContext.sendActivity("'Agents': View a list of all Wazuh agents.");
+    await turnContext.sendActivity("'Authenticate': Input username and password to verify access to Wazuh server .");
+    await turnContext.sendActivity("this is a placeholder - will be replaced with an adaptive card");
   }
 
   private async introInteraction(turnContext: TurnContext) {
-    const introMessage = `**Welcome to WazuhBot!**  
+    const userName = turnContext.activity.from.name || 'user'; // Fallback to 'user' if the name isn't available
+    const time = new Date().getHours();
+    const timedHello = time < 12 ? 'Good morning' : time < 18 ? 'Good afternoon' : 'Good evening';
+    const introMessage = `**${timedHello}, ${userName}! Welcome to WazuhBot**  
       I'm a management chatbot for your Wazuh installation. Here's what you can do:  
-      - **Type 'Agents'** to view and manage Wazuh agents.  
+      - **Type 'Authenticate'** to verify your access to the Wazuh server.  
       - **Type 'List'** to list all agents in your Wazuh installation.  
       - If you're new, try typing **'Help'** to see available commands.  
 
     For now, why don't you say **Hello**!`;
     await turnContext.sendActivity(introMessage);
   }
+
   private async handlePingCommand(turnContext: TurnContext): Promise<void> {
     // Execute the ping command
     exec('ping -c 4 8.8.8.8', (error, stdout, stderr) => {
@@ -161,7 +169,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
   //tries to authenticate to Wazuh using the basic authentication from the API (see reference document)
   private async authenticateUser(username, password) {
-    const wazuhEndpoint = 'https://10.2.187.6:55000/security/user/authenticate'; //hardcoded IP - needs to be changed when deloying
+    const wazuhEndpoint = 'https://192.168.1.110:55000/security/user/authenticate'; //hardcoded IP - needs to be changed when deloying
     try {
       const response = await axios.post(wazuhEndpoint, {}, {
         auth: {
@@ -176,6 +184,11 @@ export class TeamsBot extends TeamsActivityHandler {
       const jwtToken = response.data.data.token;
       console.log('JWT token received:', jwtToken);
       this.jwtToken = jwtToken;
+      setTimeout(() => {
+        this.jwtToken = null;
+        console.log('Wazuh tokens are only valid for 900 seconds.'); //this can be changed, but 900 seemed sufficient
+      }, 900 * 1000);
+
       return jwtToken;
 
     } 
@@ -191,17 +204,45 @@ export class TeamsBot extends TeamsActivityHandler {
       return;
     }
 
-    const agentsEndpoint = 'https://10.2.187.6:55000/agents'; // Updated URL
+    const agentsEndpoint = 'https://192.168.1.110:55000/agents';
     try {
       const response = await axios.get(agentsEndpoint, {
         headers: { 'Authorization': `Bearer ${this.jwtToken}` },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false }) // wazuh certificate requirement
+        httpsAgent: new https.Agent({ rejectUnauthorized: false })
       });
 
       const agents = response.data.data.affected_items;
       if (agents.length > 0) {
-        const formattedAgents = agents.map(agent => `ID: ${agent.id}, Name: ${agent.name}, Status: ${agent.status}`).join('\n');
-        await turnContext.sendActivity(`Active Agents:\n${formattedAgents}`);
+        // mapping the relevant details onto the adaptive card body
+        const agentItems = agents.map(agent => ({
+            "type": "TextBlock",
+            "wrap": true,
+            "text": `**ID:** ${agent.id} \n**Name:** ${agent.name} \n**Status:** ${agent.status}`
+        }));
+
+        // Template for adaptive card
+        let cardTemplate = {
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "type": "AdaptiveCard",
+            "version": "1.4",
+            "body": [
+                {
+                    "type": "TextBlock",
+                    "size": "Medium",
+                    "weight": "Bolder",
+                    "text": "Wazuh Agents"
+                },
+                {
+                    "type": "Container",
+                    "items": agentItems,
+                    "id": "agentsContainer"
+                }
+            ]
+        };
+
+        await turnContext.sendActivity({
+            attachments: [CardFactory.adaptiveCard(cardTemplate)]
+        });
       } else {
         await turnContext.sendActivity("No active agents found.");
       }
@@ -210,6 +251,8 @@ export class TeamsBot extends TeamsActivityHandler {
       await turnContext.sendActivity("An error occurred while retrieving the agent list.");
     }
 }
+
+
 
   //this is the handler for the events generated by clicking buttons on adaptive cards
   async onAdaptiveCardInvoke(
@@ -263,7 +306,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
   //this is meant to list the Agents. same VM network issue
   async listAgents(jwtToken: string): Promise<any> {
-    const agentsEndpoint = 'https://10.2.184.250:443/agents'; //hardcoded for my wazuh - change this to your own setup
+    const agentsEndpoint = 'https://192.168.1.110:443/agents'; //hardcoded for my wazuh - change this to your own setup
 
     try {
       const response = await axios.get(agentsEndpoint, {

@@ -24,6 +24,8 @@ export class TeamsBot extends TeamsActivityHandler {
   currentAgent: number = 0;
   jwtToken: any;
   private wazuhIP: string = '192.168.1.176' //default IP address, left in for ease of use
+  private username: string = 'wazuh' //default credentials for Wazuh installations
+  private password: string = 'wazuh'
   constructor() {
     super();
     //const serverIP = 'https://192.168.1.110:55000/'
@@ -82,10 +84,10 @@ export class TeamsBot extends TeamsActivityHandler {
           break;
         }
 
-        //used for testing authentication
+        //used for authentication
         case "authenticate":{
-          console.log('okay');
-          await this.authenticateUser('wazuh', 'wazuh');
+          console.log(`attempting to authenticate at ${this.wazuhIP} under username ${this.username}`);
+          await this.authenticateUser(this.username, this.password);
           break;
         }
 
@@ -108,6 +110,16 @@ export class TeamsBot extends TeamsActivityHandler {
         case "server address": {
           await turnContext.sendActivity(this.wazuhIP);
           break;
+        }
+
+        case "update details": {
+          await this.sendChangeDetailsCard(turnContext);
+          break;
+        }
+
+        //only for testing
+        case "username": {
+          await turnContext.sendActivity(this.username);
         }
         
         //meant for going to the next and previous agents while they are displayed
@@ -319,21 +331,9 @@ export class TeamsBot extends TeamsActivityHandler {
     }
 }
 
-  //use the createAgentCard to make an adaptive card of the first agent in the array
-  async displayAgentDetails(turnContext: TurnContext): Promise<void> {
-    if (this.runningAgents.length > 0) {
-      const agent = this.runningAgents[this.currentAgent];
-
-      // Update Adaptive Card with agent details
-      const adaptiveCard = this.createAgentCard(agent);
-      await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(adaptiveCard)] });
-    } else {
-      await turnContext.sendActivity('No agents available.');
-    }
-  }
   private async sendChangeIPCard(turnContext: TurnContext) {
-    console.log("Sending cards (but not flowers)");
-    const changeIPCard = {
+   console.log("Sending form to update server address");
+   const changeIPCard = {
       "type": "AdaptiveCard",
       "body": [
           {
@@ -359,9 +359,74 @@ export class TeamsBot extends TeamsActivityHandler {
       "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
       "version": "1.4"
   };
-    
+  
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(changeIPCard)] });
   }
+
+  private async sendChangeDetailsCard(turnContext: TurnContext) {
+    console.log("Sending form to update user details");
+    const changeDetailsCard = {
+        "type": "AdaptiveCard",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Enter your username and password",
+                "wrap": true
+            },
+            {
+                "type": "Input.Text",
+                "id": "uName",
+                "placeholder": "admin",
+                "isRequired": true,
+                "label": "Username"
+            },
+            {
+              type: "Input.Text",
+              "id": "pWord",
+              "placeholder": "password1234",
+              "isRequired": true,
+              "label": "Password"
+            }
+        ],
+        "actions": [
+          {
+            "type": "Action.Execute",
+            "title": "Submit Details",
+            "verb": "changedetails"
+          }
+        ],
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.4"
+    };
+  
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(changeDetailsCard)] });
+  }
+
+  private async handleDetailsUpdate(turnContext: TurnContext, data: any){
+    console.log(data.uName);
+    if(data.uName && data.pWord){
+      this.username = data.uName;
+      this.password = data.pWord;
+      await turnContext.sendActivity(`Thank you for providing your credentials. Username updated to: ${data.uName}`);
+    } else{
+      await turnContext.sendActivity('Invalid credentials provided. Please try again');
+    }
+  }
+
+  //use the createAgentCard to make an adaptive card of the first agent in the array
+  async displayAgentDetails(turnContext: TurnContext): Promise<void> {
+    if (this.runningAgents.length > 0) {
+      const agent = this.runningAgents[this.currentAgent];
+
+      // Update Adaptive Card with agent details
+      const adaptiveCard = this.createAgentCard(agent);
+      await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(adaptiveCard)] });
+    } else {
+      await turnContext.sendActivity('No agents available.');
+    }
+  }
+
+  
   //create an adaptive card to display an agent item. should have been its own card file, couldn't figure out how to make the import work
   createAgentCard(agent: any): any {
     return {
@@ -486,20 +551,20 @@ export class TeamsBot extends TeamsActivityHandler {
   // }
 
   protected async onAdaptiveCardInvoke(turnContext: TurnContext, invokeValue: AdaptiveCardInvokeValue): Promise<AdaptiveCardInvokeResponse> {
-    // Log the incoming invoke action type
-    console.log(`Received an Adaptive Card Invoke. Action type: ${invokeValue.action.type}`);
+    console.log(`Received an Adaptive Card Invoke.`);
 
-    // Extract the action verb from the invocation
     const actionVerb = invokeValue.action.verb;
 
-    // Process the invoke based on the action verb
+    // Process the invoke based on the action verb, i.e. the name of the element used in the adaptive card
     switch (actionVerb) {
         case 'changeip':
             console.log(`Action Data: ${JSON.stringify(invokeValue.action.data)}`);
             // Call the method to handle the IP change with the input data
             await this.handleChangeIPResponse(turnContext, invokeValue.action.data);
             break;
-        // Add other cases as needed for different verbs
+        case 'changedetails':
+          console.log(`New Credentials: ${JSON.stringify(invokeValue.action.data)}`)
+          await this.handleDetailsUpdate(turnContext, invokeValue.action.data);
         default:
             console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
             break;

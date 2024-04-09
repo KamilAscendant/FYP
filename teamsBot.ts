@@ -20,19 +20,19 @@ export interface DataInterface {
 }
 
 export class TeamsBot extends TeamsActivityHandler {
-  runningAgents:any[] = [];
+  runningAgents: any[] = [];
   currentAgent: number = 0;
   jwtToken: any;
-  private wazuhIP: string = '192.168.1.176' //default IP address, left in for ease of use
-  private username: string = 'wazuh' //default credentials for Wazuh installations
-  private password: string = 'wazuh'
+  private wazuhIP: string = '' //default IP address, left in for ease of use
+  private username: string = '' //default credentials for Wazuh installations
+  private password: string = ''
   private currentAgentIndex: number = 0;
   private agentList: any[] = [];
 
   constructor() {
     super();
     //const serverIP = 'https://192.168.1.110:55000/'
-    const wazuhEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate?raw=true`;
+    //const wazuhEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate?raw=true`;
 
     this.onMembersAdded(async (context, next) => {
       const membersAdded = context.activity.membersAdded;
@@ -43,7 +43,7 @@ export class TeamsBot extends TeamsActivityHandler {
           break;
         }
       }
-  
+
       await next();
     });
 
@@ -51,11 +51,11 @@ export class TeamsBot extends TeamsActivityHandler {
       console.log("Running with Message Activity.");
 
       let txt = turnContext.activity.text;
-    const removedMentionText = TurnContext.removeRecipientMention(turnContext.activity);
+      const removedMentionText = TurnContext.removeRecipientMention(turnContext.activity);
 
-    if (removedMentionText) {
-      txt = removedMentionText.replace(/\n|\r/g, "").trim().toLowerCase(); // Normalize input to lowercase, remove newlines etc
-    }
+      if (removedMentionText) {
+        txt = removedMentionText.replace(/\n|\r/g, "").trim().toLowerCase(); // Normalize input to lowercase, remove newlines etc
+      }
 
       console.log(txt);
       // Trigger command by IM text
@@ -70,7 +70,7 @@ export class TeamsBot extends TeamsActivityHandler {
         }
 
         //intro statement, in full release will be brought up to the first thing said
-        case "introduction":{
+        case "introduction": {
           await this.introInteraction(turnContext);
           break
         }
@@ -88,7 +88,7 @@ export class TeamsBot extends TeamsActivityHandler {
         }
 
         //used for authentication
-        case "authenticate":{
+        case "authenticate": {
           console.log(`attempting to authenticate at ${this.wazuhIP} under username ${this.username}`);
           await this.authenticateUser(this.username, this.password);
           break;
@@ -100,19 +100,24 @@ export class TeamsBot extends TeamsActivityHandler {
           break;
         }
 
-        case "ping": {
-          await this.handlePingCommand(turnContext);
-          break;
-        }
+        // case "ping": {
+        //   await this.handlePingCommand(turnContext);
+        //   break;
+        // }
 
-        case "changeip": {
+        case "change ip": {
           await this.sendChangeIPCard(turnContext);
           break;
         }
 
         case "server address": {
-          await turnContext.sendActivity(this.wazuhIP);
-          break;
+          if (!this.wazuhIP){
+            await turnContext.sendActivity(`No server address for Wazuh is currently stored. If you wish to set up a new server address, please reply 'change ip'`);
+            break;
+          } else{
+            await turnContext.sendActivity(this.wazuhIP);
+            break;
+          }
         }
 
         case "update details": {
@@ -125,23 +130,19 @@ export class TeamsBot extends TeamsActivityHandler {
           await turnContext.sendActivity(this.username);
           break;
         }
-        
+
         case "restart agent": {
           await this.sendRestartAgentCard(turnContext);
           break;
         }
-        //meant for going to the next and previous agents while they are displayed
-        //case "Next":{
-         // await this.agentNavigation(turnContext, 'nextAgent');
-          //break;
-        //}
-        //case "Back":{
-          //await this.agentNavigation(turnContext, 'prevAgent');
-          //break;
-        //}
+
+        case "get sca": {
+          await this.getSCACard(turnContext);
+          break;
+        }
       }
 
- 
+
       await next();
     });
     //automatic message on greeting new member in chat. This is from the template.
@@ -185,15 +186,15 @@ export class TeamsBot extends TeamsActivityHandler {
   private async handlePingCommand(turnContext: TurnContext): Promise<void> {
     // Execute the ping command
     exec('ping -c 4 8.8.8.8', (error, stdout, stderr) => {
-        if (error) {
-            console.error(`exec error: ${error}`);
-            turnContext.sendActivity("Failed to ping 8.8.8.8");
-            return;
-        }
+      if (error) {
+        console.error(`exec error: ${error}`);
+        turnContext.sendActivity("Failed to ping 8.8.8.8");
+        return;
+      }
 
-        // Send the result of the ping command back to the user
-        // Note: stdout will contain the ping command output
-        turnContext.sendActivity(`Ping result:\n\n${stdout}`);
+      // Send the result of the ping command back to the user
+      // Note: stdout will contain the ping command output
+      turnContext.sendActivity(`Ping result:\n\n${stdout}`);
     });
   }
 
@@ -206,8 +207,8 @@ export class TeamsBot extends TeamsActivityHandler {
           username: username,
           password: password,
         },
-        httpsAgent: new https.Agent({ 
-          rejectUnauthorized: false 
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false
         })
       });
 
@@ -221,10 +222,10 @@ export class TeamsBot extends TeamsActivityHandler {
 
       return jwtToken;
 
-    } 
-      catch (error) {
+    }
+    catch (error) {
       console.error('Error while authenticating user:', error.message);
-      return null; 
+      return null;
     }
   }
 
@@ -326,36 +327,34 @@ export class TeamsBot extends TeamsActivityHandler {
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
   }
 
-
-
   //handle the changeIP card being invoked
   private async handleChangeIPResponse(turnContext: TurnContext, data: any) {
     console.log(data.newIP);
     if (data.newIP) {
-        this.wazuhIP = data.newIP;
-        await turnContext.sendActivity(`The Wazuh IP has been updated to: ${data.newIP}`);
+      this.wazuhIP = data.newIP;
+      await turnContext.sendActivity(`The Wazuh IP has been updated to: ${data.newIP}`);
     } else {
-        await turnContext.sendActivity("No new IP address provided.");
+      await turnContext.sendActivity("No new IP address provided.");
     }
   }
 
   private async sendChangeIPCard(turnContext: TurnContext) {
-   console.log("Sending form to update server address");
-   const changeIPCard = {
+    console.log("Sending form to update server address");
+    const changeIPCard = {
       "type": "AdaptiveCard",
       "body": [
-          {
-              "type": "TextBlock",
-              "text": "Enter the new IP address of your Wazuh server:",
-              "wrap": true
-          },
-          {
-              "type": "Input.Text",
-              "id": "newIP",
-              "placeholder": "e.g., 192.168.1.110",
-              "isRequired": true,
-              "label": "Wazuh Server IP"
-          }
+        {
+          "type": "TextBlock",
+          "text": "Enter the new IP address of your Wazuh server:",
+          "wrap": true
+        },
+        {
+          "type": "Input.Text",
+          "id": "newIP",
+          "placeholder": "e.g., 192.168.1.110",
+          "isRequired": true,
+          "label": "Wazuh Server IP"
+        }
       ],
       "actions": [
         {
@@ -366,107 +365,96 @@ export class TeamsBot extends TeamsActivityHandler {
       ],
       "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
       "version": "1.4"
-  };
-  
+    };
+
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(changeIPCard)] });
   }
 
   private async sendChangeDetailsCard(turnContext: TurnContext) {
     console.log("Sending form to update user details");
     const changeDetailsCard = {
-        "type": "AdaptiveCard",
-        "body": [
-            {
-                "type": "TextBlock",
-                "text": "Enter your username and password",
-                "wrap": true
-            },
-            {
-                "type": "Input.Text",
-                "id": "uName",
-                "placeholder": "admin",
-                "isRequired": true,
-                "label": "Username"
-            },
-            {
-              type: "Input.Text",
-              "id": "pWord",
-              "placeholder": "password1234",
-              "isRequired": true,
-              "label": "Password"
-            }
-        ],
-        "actions": [
-          {
-            "type": "Action.Execute",
-            "title": "Submit Details",
-            "verb": "changedetails"
-          }
-        ],
-        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-        "version": "1.4"
+      "type": "AdaptiveCard",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "Enter your username and password",
+          "wrap": true
+        },
+        {
+          "type": "Input.Text",
+          "id": "uName",
+          "placeholder": "admin",
+          "isRequired": true,
+          "label": "Username"
+        },
+        {
+          type: "Input.Text",
+          "id": "pWord",
+          "placeholder": "password1234",
+          "isRequired": true,
+          "label": "Password"
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.Execute",
+          "title": "Submit Details",
+          "verb": "changedetails"
+        }
+      ],
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
     };
-  
+
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(changeDetailsCard)] });
   }
 
-  private async handleDetailsUpdate(turnContext: TurnContext, data: any){
+  private async handleDetailsUpdate(turnContext: TurnContext, data: any) {
     console.log(data.uName);
-    if(data.uName && data.pWord){
+    if (data.uName && data.pWord) {
       this.username = data.uName;
       this.password = data.pWord;
       await turnContext.sendActivity(`Thank you for providing your credentials. Username updated to: ${data.uName}`);
-    } else{
+    } else {
       await turnContext.sendActivity('Invalid credentials provided. Please try again');
     }
   }
 
-  //use the createAgentCard to make an adaptive card of the first agent in the array
-  async displayAgentDetails(turnContext: TurnContext): Promise<void> {
-    if (this.runningAgents.length > 0) {
-      const agent = this.runningAgents[this.currentAgent];
 
-      // Update Adaptive Card with agent details
-      const adaptiveCard = this.createAgentCard(agent);
-      await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(adaptiveCard)] });
-    } else {
-      await turnContext.sendActivity('No agents available.');
-    }
-  }
 
   private async sendRestartAgentCard(turnContext: TurnContext) {
     console.log("Sending form to restart Agent");
     const restartAgent = {
-        "type": "AdaptiveCard",
-        "body": [
-            {
-                "type": "TextBlock",
-                "text": "Enter the ID of the Agent to be restarted:",
-                "wrap": true
-            },
-            {
-                "type": "Input.Text",
-                "id": "restartID",
-                "placeholder": "e.g., 001",
-                "isRequired": true,
-                "label": "Target Agent ID"
-            }
-        ],
-        "actions": [
-          {
-            "type": "Action.Execute",
-            "title": "Restart Agent",
-            "verb": "restartID"
-          }
-        ],
-        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-        "version": "1.4"
+      "type": "AdaptiveCard",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "Enter the ID of the Agent to be restarted:",
+          "wrap": true
+        },
+        {
+          "type": "Input.Text",
+          "id": "restartID",
+          "placeholder": "e.g., 001",
+          "isRequired": true,
+          "label": "Target Agent ID"
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.Execute",
+          "title": "Restart Agent",
+          "verb": "restartID"
+        }
+      ],
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
     };
-    
-      await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(restartAgent)] });
+
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(restartAgent)] });
   }
 
-  private async restartAgent(turnContext: TurnContext, data:any) {
+  private async restartAgent(turnContext: TurnContext, data: any) {
     const endpoint = `https://${this.wazuhIP}:55000/agents/${data.restartID}/restart`;
     try {
       const response = await axios.put(endpoint, null, {
@@ -485,129 +473,129 @@ export class TeamsBot extends TeamsActivityHandler {
       await turnContext.sendActivity(`An error occurred while restarting agent with ID ${data.restartID}.`);
     }
   }
-  
-  //create an adaptive card to display an agent item. should have been its own card file, couldn't figure out how to make the import work
-  createAgentCard(agent: any): any {
-    return {
-      type: 'AdaptiveCard',
-      body: [
+
+  private async getSCACard(turnContext: TurnContext) {
+    console.log("Sending form to restart Agent");
+    const SCACard = {
+      "type": "AdaptiveCard",
+      "body": [
         {
-          type: 'TextBlock',
-          text: `Agent Details - ${agent.name}`,
-          weight: 'bolder',
-          size: 'medium',
+          "type": "TextBlock",
+          "text": "Enter the ID of the Agent to fetch SCA info for:",
+          "wrap": true
         },
         {
-          type: 'TextBlock',
-          text: `Status: ${agent.status}`,
-        },
-        {
-          type: 'TextBlock',
-          text: `IP Address: ${agent.ip}`,
-        },
-        {
-          type: 'TextBlock',
-          text: `ID: ${agent.id}`,
-        },
+          "type": "Input.Text",
+          "id": "scaID",
+          "placeholder": "e.g., 001",
+          "isRequired": true,
+          "label": "Target Agent ID"
+        }
       ],
-      actions: [
+      "actions": [
         {
-          type: 'Action.Submit',
-          title: 'Next Agent',
-          data: {
-            command: 'nextAgent',
-          },
-          visible: this.currentAgent < this.runningAgents.length - 1,
-        },
-        {
-          type: 'Action.Submit',
-          title: 'Previous Agent',
-          data: {
-            command: 'prevAgent',
-          },
-          visible: this.currentAgent > 0,
-        },
+          "type": "Action.Execute",
+          "title": "Fetch SCA Info",
+          "verb": "fetchsca"
+        }
       ],
-      $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
-      version: '1.4',
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
     };
+
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(SCACard)] });
   }
 
-  //this should work for next and previous card displays
-  async agentNavigation(turnContext: TurnContext, command: string): Promise<void> {
-    switch (command) {
-      case 'nextAgent':
-        if (this.currentAgent < this.runningAgents.length - 1) {
-          this.currentAgent++;
-          await this.displayAgentDetails(turnContext);
-        }
-        break;
-      case 'prevAgent':
-        if (this.currentAgent > 0) {
-          this.currentAgent--;
-          await this.displayAgentDetails(turnContext);
-        }
-        break;
-      default:
-        break;
+  private async fetchSCA(turnContext: TurnContext, data: any,) {
+    if (!this.jwtToken) {
+      await turnContext.sendActivity("Authentication required. Please authenticate first.");
+      return;
+    }
+
+    const endpoint = `https://${this.wazuhIP}:55000/sca/${data.scaID}`;
+    try {
+      const response = await axios.get(endpoint, {
+        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+      });
+
+      const scaItem = response.data.data.affected_items[0];
+      if (scaItem) {
+        let cardTemplate = {
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "type": "AdaptiveCard",
+          "version": "1.4",
+          "body": [
+            {
+              "type": "TextBlock",
+              "text": scaItem.name,
+              "wrap": true,
+              "size": "Large",
+              "weight": "Bolder"
+            },
+            {
+              "type": "TextBlock",
+              "text": `Description: ${scaItem.description}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Total Checks: ${scaItem.total_checks}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Passed: ${scaItem.pass}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Failed: ${scaItem.fail}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Invalid: ${scaItem.invalid}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Score: ${scaItem.score}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Start Scan: ${scaItem.start_scan}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `End Scan: ${scaItem.end_scan}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `References: ${scaItem.references}`,
+              "wrap": true,
+              "maxLines": 3
+            }
+          ]
+        };
+
+        await turnContext.sendActivity({
+          attachments: [CardFactory.adaptiveCard(cardTemplate)]
+        });
+      } else {
+        await turnContext.sendActivity("No SCA details found for the specified agent.");
+      }
+    } catch (error) {
+      console.error('Error fetching SCA details:', error);
+      await turnContext.sendActivity("An error occurred while retrieving the SCA details.");
     }
   }
 
-  //this is the handler for the events generated by clicking buttons on adaptive cards
-  // protected async onAdaptiveCardInvoke(turnContext: TurnContext, invokeValue: AdaptiveCardInvokeValue): Promise<AdaptiveCardInvokeResponse> {
-  //   const action = invokeValue.action;
-  //   console.log('Adaptive Card Invoked');
 
-  //   //this is from clicking Agents in 'Hello'
-  //   if (action.verb == "agentrequest") {
-  //     const card = AdaptiveCards.declare<DataInterface>(rawAgentCard).render();
-  //     await turnContext.updateActivity({
-  //       type: "message",
-  //       id: turnContext.activity.replyToId,
-  //       attachments: [CardFactory.adaptiveCard(card)],
-  //     });
-  //     return { statusCode: 200, type: undefined, value: undefined };
-  //   }
-  //   if (action && action.data && action.data.action === 'changeIP') {
-  //     console.log('test');
-  //     // Call the method to handle the IP change with the input data
-  //     await this.handleChangeIPResponse(turnContext, action.data);
-  //     console.log(action.data);
-  //     return { statusCode: 200, type: undefined, value: undefined };
-  // }
-  //   //Sorry is a card that is meant for in-dev situations
-  //   if (action.verb == "eventlist") {
-  //     const card = AdaptiveCards.declare<DataInterface>(rawSorryCard).render();
-  //     await turnContext.updateActivity({
-  //       type: "message",
-  //       id: turnContext.activity.replyToId,
-  //       attachments: [CardFactory.adaptiveCard(card)],
-  //     });
-  //     return { statusCode: 200, type: undefined, value: undefined };
-  //   }
-  //   //inprogress is the default verb for cards I have not finished the functionality for yet
-  //   if (action.verb == "inprogress") {
-  //     const card = AdaptiveCards.declare<DataInterface>(rawSorryCard).render();
-  //     await turnContext.updateActivity({
-  //       type: "message",
-  //       id: turnContext.activity.replyToId,
-  //       attachments: [CardFactory.adaptiveCard(card)],
-  //     });
 
-  //     return { statusCode: 200, type: undefined, value: undefined };
-
-  //   }
-  //   //attempts to list all agents. hypothetically works but issues with VM network config means not functioning
-  //   if (action.verb == "listagent"){
-  //     console.log('whats wrong');
-  //     const jwtToken = await this.authenticateUser('admin', 'S2o.z?5gX8A*8+AZoaTr4hGWZaUw5a6?'); 
-  //     console.log('made it this far');
-  //     const agentsList = await this.processAgentsData(jwtToken);
-  //     console.log('so far so good')
-  //     this.runningAgents = agentsList;
-  //     await turnContext.sendActivity('Agents list obtained and stored.');
-  //   }
-  // }
 
   protected async onAdaptiveCardInvoke(turnContext: TurnContext, invokeValue: AdaptiveCardInvokeValue): Promise<AdaptiveCardInvokeResponse> {
     console.log(`Received an Adaptive Card Invoke.`);
@@ -616,37 +604,41 @@ export class TeamsBot extends TeamsActivityHandler {
 
     // Process the invoke based on the action verb, i.e. the name of the element used in the adaptive card
     switch (actionVerb) {
-        case 'changeip':
-            console.log(`Action Data: ${JSON.stringify(invokeValue.action.data)}`);
-            // Call the method to handle the IP change with the input data
-            await this.handleChangeIPResponse(turnContext, invokeValue.action.data);
-            break;
-        case 'changedetails':
-          console.log(`New Credentials: ${JSON.stringify(invokeValue.action.data)}`);
-          await this.handleDetailsUpdate(turnContext, invokeValue.action.data);
-          break;
-        case 'restartID':
-          console.log(`Restarting agent with id ${JSON.stringify(invokeValue.action.data)}`);
-          await this.restartAgent(turnContext, invokeValue.action.data);
-          break;
-          case "shownext":
-            this.currentAgentIndex = Math.min(this.currentAgentIndex + 1, this.agentList.length - 1);
-            await this.sendAgentInfoCard(turnContext);
-            break;
-          case "showprev":
-            this.currentAgentIndex = Math.max(this.currentAgentIndex - 1, 0);
-            await this.sendAgentInfoCard(turnContext);
-            break;
-        default:
-            console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
-            break;
+      case 'changeip':
+        console.log(`Action Data: ${JSON.stringify(invokeValue.action.data)}`);
+        // Call the method to handle the IP change with the input data
+        await this.handleChangeIPResponse(turnContext, invokeValue.action.data);
+        break;
+      case 'changedetails':
+        console.log(`New Credentials: ${JSON.stringify(invokeValue.action.data)}`);
+        await this.handleDetailsUpdate(turnContext, invokeValue.action.data);
+        break;
+      case 'restartID':
+        console.log(`Restarting agent with id ${JSON.stringify(invokeValue.action.data)}`);
+        await this.restartAgent(turnContext, invokeValue.action.data);
+        break;
+      case "shownext":
+        this.currentAgentIndex = Math.min(this.currentAgentIndex + 1, this.agentList.length - 1);
+        await this.sendAgentInfoCard(turnContext);
+        break;
+      case "showprev":
+        this.currentAgentIndex = Math.max(this.currentAgentIndex - 1, 0);
+        await this.sendAgentInfoCard(turnContext);
+        break;
+      case "fetchsca":
+        await turnContext.sendActivity(`Fetching SCA Information for Agent ${JSON.stringify(invokeValue.action.data)}`);
+        await this.fetchSCA(turnContext, invokeValue.action.data);
+        break;
+      default:
+        console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
+        break;
     }
 
     // Return a response for the invoke action
     return {
-        statusCode: 200,
-        type: undefined,
-        value: undefined
+      statusCode: 200,
+      type: undefined,
+      value: undefined
     };
   }
 }

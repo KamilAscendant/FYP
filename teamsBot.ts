@@ -22,9 +22,9 @@ export class TeamsBot extends TeamsActivityHandler {
   runningAgents: any[] = [];
   currentAgent: number = 0;
   jwtToken: any;
-  private wazuhIP: string = '' //default IP address, left in for ease of use
-  private username: string = '' //default credentials for Wazuh installations
-  private password: string = ''
+  private wazuhIP: string = '10.2.186.109' //default IP address, left in for ease of use
+  private username: string = 'wazuh' //default credentials for Wazuh installations
+  private password: string = 'wazuh'
   private currentAgentIndex: number = 0;
   private agentList: any[] = [];
 
@@ -339,8 +339,8 @@ export class TeamsBot extends TeamsActivityHandler {
         httpsAgent: new https.Agent({ rejectUnauthorized: false })
       });
 
-      const summary = response.data.data.affected_items;
-      if (summary.length > 0) {
+      const summary = response.data.data;
+      if (summary) {
         // Assuming we only display the first item for simplicity
         const summaryDisplay = summary[0];
         let cardTemplate = {
@@ -413,7 +413,7 @@ export class TeamsBot extends TeamsActivityHandler {
         await turnContext.sendActivity("No summary found.");
       }
     } catch (error) {
-      console.error('Error fetching SCA details:', error);
+      console.error('Error fetching summary', error);
       await turnContext.sendActivity("An error occurred while fetching the agent summary.");
     }
 }

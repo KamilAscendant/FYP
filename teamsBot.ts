@@ -122,6 +122,9 @@ export class TeamsBot extends TeamsActivityHandler {
           await turnContext.sendActivity(this.username);
         }
         
+        case "restart agent": {
+          await this.sendRestartAgentCard(turnContext);
+        }
         //meant for going to the next and previous agents while they are displayed
         //case "Next":{
          // await this.agentNavigation(turnContext, 'nextAgent');
@@ -329,7 +332,7 @@ export class TeamsBot extends TeamsActivityHandler {
     } else {
         await turnContext.sendActivity("No new IP address provided.");
     }
-}
+  }
 
   private async sendChangeIPCard(turnContext: TurnContext) {
    console.log("Sending form to update server address");
@@ -426,6 +429,41 @@ export class TeamsBot extends TeamsActivityHandler {
     }
   }
 
+  private async sendRestartAgentCard(turnContext: TurnContext) {
+    console.log("Sending form to restart Agent");
+    const restartAgent = {
+        "type": "AdaptiveCard",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Enter the ID of the Agent to be restarted:",
+                "wrap": true
+            },
+            {
+                "type": "Input.Text",
+                "id": "restartID",
+                "placeholder": "e.g., 001",
+                "isRequired": true,
+                "label": "Target Agent ID"
+            }
+        ],
+        "actions": [
+          {
+            "type": "Action.Execute",
+            "title": "Restart Agent",
+            "verb": "restartID"
+          }
+        ],
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.4"
+    };
+    
+      await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(restartAgent)] });
+  }
+
+  private async restartAgent(turnContext: TurnContext, data: Record<string, unknown>) {
+    throw new Error("Method not implemented.");
+  }
   
   //create an adaptive card to display an agent item. should have been its own card file, couldn't figure out how to make the import work
   createAgentCard(agent: any): any {
@@ -563,10 +601,13 @@ export class TeamsBot extends TeamsActivityHandler {
             await this.handleChangeIPResponse(turnContext, invokeValue.action.data);
             break;
         case 'changedetails':
-          console.log(`New Credentials: ${JSON.stringify(invokeValue.action.data)}`)
+          console.log(`New Credentials: ${JSON.stringify(invokeValue.action.data)}`);
           await this.handleDetailsUpdate(turnContext, invokeValue.action.data);
+        case 'restartID':
+          console.log(`Restarting agent with id ${JSON.stringify(invokeValue.action.data)}`);
         default:
             console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
+            await this.restartAgent(turnContext, invokeValue.action.data);
             break;
     }
 
@@ -576,7 +617,7 @@ export class TeamsBot extends TeamsActivityHandler {
         type: undefined,
         value: undefined
     };
-}
+  }
 }
 
 

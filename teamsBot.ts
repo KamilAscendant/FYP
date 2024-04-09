@@ -95,8 +95,8 @@ export class TeamsBot extends TeamsActivityHandler {
         }
 
         //try and list all agents on the wazuh configuration
-        case "list": {
-          await this.listActiveAgents(turnContext);
+        case "list all": {
+          await this.listAllAgents(turnContext);
           break;
         }
 
@@ -254,52 +254,79 @@ export class TeamsBot extends TeamsActivityHandler {
       console.error('Error fetching agents:', error);
       await turnContext.sendActivity("An error occurred while retrieving the agent list.");
     }
-}
+  }
+  private async sendAgentInfoCard(turnContext: TurnContext) {
+    if (this.agentList.length === 0) {
+      await turnContext.sendActivity("No agents available.");
+      return;
+    }
 
-
-  //this is meant to list the Agents. same VM network issue
-  async listAgents(jwtToken: string): Promise<any> {
-    const agentsEndpoint = 'https://${this.wazuhIP}:443/agents'; 
-
-    try {
-      const response = await axios.get(agentsEndpoint, {
-        headers: {
-          Authorization: `Bearer ${jwtToken}`,
+    const agent = this.agentList[this.currentAgentIndex];
+    const card = {
+      "type": "AdaptiveCard",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": `Agent Details`,
+          "size": "Large",
+          "weight": "Bolder"
         },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false }), // Disable SSL certificate validation, wazuh has issues with that (VERY UNSAFE ONLY FOR DEV)
-      });
+        {
+          "type": "TextBlock",
+          "text": `Name: ${agent.name}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `OS: ${agent.os.name}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `Date Added: ${agent.dateAdd}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `Manager: ${agent.manager}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `Last Keep Alive: ${agent.lastKeepAlive}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `Status: ${agent.status}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `IP: ${agent.ip}`,
+          "wrap": true
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.Execute",
+          "title": "Previous",
+          "verb": "showprev"
+        },
+        {
+          "type": "Action.Execute",
+          "title": "Next",
+          "verb": "shownext"
+        }
+      ],
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
+    };
 
-      return response.data; // Return the list of agents or error description
-    } catch (error) {
-      console.error('Error while listing agents:', error.response?.data || error.message);
-      throw error; // Throw the error if encountered during the API call
-    }
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
   }
-  //loops through all returned agents, only stores certain values - can expand this later but wanted to keep it simple for now
-  async processAgentsData(jwtToken: string): Promise<any[]> {
-    try {
-      // Retrieve the list of agents using the listAgents method
-      const agentsData = await this.listAgents(jwtToken);
 
-      // Create an empty array to store processed agents
-      const agentsSmall: any[] = [];
-      //loops through and only keeps id, name, ip, status
-      for (const agent of agentsData.data.affected_items) {
-        const smallAgent = {
-          id: agent.id,
-          name: agent.name,
-          ip: agent.ip,
-          status: agent.status,
-        };
-          agentsSmall.push(smallAgent);
-      }
 
-      return agentsSmall;
-    } catch (error) {
-      console.error('Error while processing agents', error);
-      throw error;
-    }
-  }
 
   //handle the changeIP card being invoked
   private async handleChangeIPResponse(turnContext: TurnContext, data: any) {
@@ -602,6 +629,14 @@ export class TeamsBot extends TeamsActivityHandler {
           console.log(`Restarting agent with id ${JSON.stringify(invokeValue.action.data)}`);
           await this.restartAgent(turnContext, invokeValue.action.data);
           break;
+          case "shownext":
+            this.currentAgentIndex = Math.min(this.currentAgentIndex + 1, this.agentList.length - 1);
+            await this.sendAgentInfoCard(turnContext);
+            break;
+          case "showprev":
+            this.currentAgentIndex = Math.max(this.currentAgentIndex - 1, 0);
+            await this.sendAgentInfoCard(turnContext);
+            break;
         default:
             console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
             break;

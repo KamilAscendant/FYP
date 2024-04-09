@@ -25,8 +25,11 @@ export class TeamsBot extends TeamsActivityHandler {
   private wazuhIP: string = '10.2.186.109' //default IP address, left in for ease of use
   private username: string = 'wazuh' //default credentials for Wazuh installations
   private password: string = 'wazuh'
+
   private currentAgentIndex: number = 0;
   private agentList: any[] = [];
+  private currentGroupIndex: number = 0;
+  private groupList: any[] = [];
 
   constructor() {
     super();
@@ -153,6 +156,11 @@ export class TeamsBot extends TeamsActivityHandler {
         case "view summary": {
           await this.getSummary(turnContext);
         }
+
+        case "mitre group lookup":{
+          await this.sendGroupLookupCard(turnContext);
+          break;
+        }
       }
 
 
@@ -263,7 +271,7 @@ export class TeamsBot extends TeamsActivityHandler {
     }
 
     const agent = this.agentList[this.currentAgentIndex];
-    const card = {
+    const agentCard = {
       "type": "AdaptiveCard",
       "body": [
         {
@@ -324,7 +332,7 @@ export class TeamsBot extends TeamsActivityHandler {
       "version": "1.4"
     };
 
-    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(agentCard)] });
   }
 
   private async getSummary(turnContext: TurnContext): Promise<void>{
@@ -684,6 +692,122 @@ export class TeamsBot extends TeamsActivityHandler {
     }
   }
 
+  private async sendGroupLookupCard(turnContext: TurnContext) {
+    console.log("Sending form to update look up MITRE group");
+    const groupCard = {
+      "type": "AdaptiveCard",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "MITRE Group Search",
+          "wrap": true
+        },
+        {
+          "type": "Input.Text",
+          "id": "lookup",
+          "placeholder": "e.g., North Korea, APT38, Lazarus",
+          "isRequired": true,
+          "label": "Search Term for MITRE group database"
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.Execute",
+          "title": "Search",
+          "verb": "groupSearch"
+        }
+      ],
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
+    };
+
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(groupCard)] });
+  }
+
+  private async groupLookup(turnContext: TurnContext, data: Record<string, unknown>) {
+    if (!this.jwtToken) {
+      await turnContext.sendActivity("Authentication required. Please authenticate first.");
+      return;
+    }
+
+    const endpoint = `https://${this.wazuhIP}:55000/mitre/groups?search=${data.lookup}`;
+    try {
+      const response = await axios.get(endpoint, {
+        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+      });
+
+      this.groupList = response.data.data.affected_items;
+      this.currentGroupIndex = 0;
+       
+      if (this.groupList.length > 0) {
+        // Call method to send Adaptive Card for the current agent
+        await this.sendGroupInfoCard(turnContext);
+      } else {
+        await turnContext.sendActivity("No results for search term");
+      }
+    } catch (error) {
+      console.error('Error in lookup:', error);
+      await turnContext.sendActivity("An error occurred while searching for your term");
+    }
+  }
+
+  private async sendGroupInfoCard(turnContext: TurnContext) {
+    if (this.agentList.length === 0) {
+      await turnContext.sendActivity("No agents available.");
+      return;
+    }
+
+    const group = this.groupList[this.currentGroupIndex];
+    const card = {
+      "type": "AdaptiveCard",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": `Group Details`,
+          "size": "Large",
+          "weight": "Bolder"
+        },
+        {
+          "type": "TextBlock",
+          "text": `Name: ${group.name}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `Description: ${group.description}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `MITRE Version: ${group.mitre_version}`,
+          "wrap": true
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.Execute",
+          "title": "Previous",
+          "verb": "prevgroup"
+        },
+        {
+          "type": "Action.Execute",
+          "title": "View Details",
+          "verb": "groupdetails"
+        },
+        {
+          "type": "Action.Execute",
+          "title": "Next",
+          "verb": "nextgroup"
+        }
+      ],
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
+    };
+
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+  }
+
   protected async onAdaptiveCardInvoke(turnContext: TurnContext, invokeValue: AdaptiveCardInvokeValue): Promise<AdaptiveCardInvokeResponse> {
     console.log(`Received an Adaptive Card Invoke.`);
 
@@ -715,6 +839,17 @@ export class TeamsBot extends TeamsActivityHandler {
       case "fetchsca":
         await turnContext.sendActivity(`Fetching SCA Information for Agent ${JSON.stringify(invokeValue.action.data)}`);
         await this.fetchSCA(turnContext, invokeValue.action.data);
+        break;
+      case "groupsearch":
+        await turnContext.sendActivity(`Querying MITRE DB for ${JSON.stringify(invokeValue.action.data.lookup)}`)
+        await this.groupLookup(turnContext, invokeValue.action.data);
+      case "nextgroup":
+        this.currentGroupIndex = Math.min(this.currentGroupIndex +1, this.groupList.length -1);
+        await this.sendGroupInfoCard(turnContext);
+        break;
+      case "prevgroup":
+        this.currentGroupIndex = Math.max(this.currentGroupIndex-1, 0);
+        await this.sendGroupInfoCard(turnContext);
         break;
       default:
         console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);

@@ -120,10 +120,12 @@ export class TeamsBot extends TeamsActivityHandler {
         //only for testing
         case "username": {
           await turnContext.sendActivity(this.username);
+          break;
         }
         
         case "restart agent": {
           await this.sendRestartAgentCard(turnContext);
+          break;
         }
         //meant for going to the next and previous agents while they are displayed
         //case "Next":{
@@ -461,8 +463,24 @@ export class TeamsBot extends TeamsActivityHandler {
       await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(restartAgent)] });
   }
 
-  private async restartAgent(turnContext: TurnContext, data: Record<string, unknown>) {
-    throw new Error("Method not implemented.");
+  private async restartAgent(turnContext: TurnContext, data:any) {
+    const endpoint = `https://${this.wazuhIP}:55000/agents/${data.restartID}/restart`;
+    try {
+      const response = await axios.put(endpoint, null, {
+        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false }) //self-signed SSL certificate issue - no idea how to bypass, Wazuh reference documents just say it's normal
+      });
+      console.log(response.status);
+      if (response.status === 200) {
+        await turnContext.sendActivity(`Agent with ID ${data.restartID} is being restarted.`);
+        console.log(`Agent with ID ${data.restartID} successfully restarted`);
+      } else {
+        await turnContext.sendActivity(`Failed to restart agent with ID ${data.restartID}.`);
+      }
+    } catch (error) {
+      console.error(`Error restarting agent with ID ${data.restartID}:`, error);
+      await turnContext.sendActivity(`An error occurred while restarting agent with ID ${data.restartID}.`);
+    }
   }
   
   //create an adaptive card to display an agent item. should have been its own card file, couldn't figure out how to make the import work
@@ -603,11 +621,13 @@ export class TeamsBot extends TeamsActivityHandler {
         case 'changedetails':
           console.log(`New Credentials: ${JSON.stringify(invokeValue.action.data)}`);
           await this.handleDetailsUpdate(turnContext, invokeValue.action.data);
+          break;
         case 'restartID':
           console.log(`Restarting agent with id ${JSON.stringify(invokeValue.action.data)}`);
+          await this.restartAgent(turnContext, invokeValue.action.data);
+          break;
         default:
             console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
-            await this.restartAgent(turnContext, invokeValue.action.data);
             break;
     }
 

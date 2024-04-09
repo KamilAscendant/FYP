@@ -264,6 +264,7 @@ export class TeamsBot extends TeamsActivityHandler {
       await turnContext.sendActivity("An error occurred while retrieving the agent list.");
     }
   }
+
   private async sendAgentInfoCard(turnContext: TurnContext) {
     if (this.agentList.length === 0) {
       await turnContext.sendActivity("No agents available.");
@@ -714,7 +715,7 @@ export class TeamsBot extends TeamsActivityHandler {
         {
           "type": "Action.Execute",
           "title": "Search",
-          "verb": "groupSearch"
+          "verb": "groupsearch"
         }
       ],
       "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -753,13 +754,13 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
   private async sendGroupInfoCard(turnContext: TurnContext) {
-    if (this.agentList.length === 0) {
-      await turnContext.sendActivity("No agents available.");
+    if (this.groupList.length === 0) {
+      await turnContext.sendActivity("No results");
       return;
     }
 
     const group = this.groupList[this.currentGroupIndex];
-    const card = {
+    const simpleGroupCard = {
       "type": "AdaptiveCard",
       "body": [
         {
@@ -805,7 +806,63 @@ export class TeamsBot extends TeamsActivityHandler {
       "version": "1.4"
     };
 
-    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(simpleGroupCard)] });
+  }
+
+  private async sendGroupDetailCard(turnContext: TurnContext) {
+    const group = this.groupList[this.currentGroupIndex];
+    const simpleGroupCard = {
+      "type": "AdaptiveCard",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": `Group Details`,
+          "size": "Large",
+          "weight": "Bolder"
+        },
+        {
+          "type": "TextBlock",
+          "text": `Name: ${group.name}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `Description: ${group.description}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `MITRE Version: ${group.mitre_version}`,
+          "wrap": true
+        },
+        {
+          "type": "TextBlock",
+          "text": `Software: ${group.software}`,
+          "wrap:" : true
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.Execute",
+          "title": "Previous",
+          "verb": "prevgroup"
+        },
+        {
+          "type": "Action.Execute",
+          "title": "View Simplified",
+          "verb": "groupsimple"
+        },
+        {
+          "type": "Action.Execute",
+          "title": "Next",
+          "verb": "nextgroup"
+        }
+      ],
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
+    };
+
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(simpleGroupCard)] });
   }
 
   protected async onAdaptiveCardInvoke(turnContext: TurnContext, invokeValue: AdaptiveCardInvokeValue): Promise<AdaptiveCardInvokeResponse> {
@@ -843,12 +900,19 @@ export class TeamsBot extends TeamsActivityHandler {
       case "groupsearch":
         await turnContext.sendActivity(`Querying MITRE DB for ${JSON.stringify(invokeValue.action.data.lookup)}`)
         await this.groupLookup(turnContext, invokeValue.action.data);
+        break;
       case "nextgroup":
         this.currentGroupIndex = Math.min(this.currentGroupIndex +1, this.groupList.length -1);
         await this.sendGroupInfoCard(turnContext);
         break;
       case "prevgroup":
         this.currentGroupIndex = Math.max(this.currentGroupIndex-1, 0);
+        await this.sendGroupInfoCard(turnContext);
+        break;
+      case "groupdetails":
+        await this.sendGroupDetailCard(turnContext);
+        break;
+      case "groupsimple":
         await this.sendGroupInfoCard(turnContext);
         break;
       default:

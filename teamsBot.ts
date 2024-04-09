@@ -12,7 +12,6 @@ import rawInitialiseCard from "./adaptiveCards/initialise.json";
 import rawAgentCard from "./adaptiveCards/agents.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 import rawSorryCard from "./adaptiveCards/Sorry.json";
-import rawagentListCard from "./adaptiveCards/agentList.json"
 //const agentListCardTemplate = require("./adaptiveCards/agentList.json");
 import axios, { AxiosRequestConfig } from 'axios';
 import { exec } from "child_process";
@@ -89,9 +88,14 @@ export class TeamsBot extends TeamsActivityHandler {
 
         //used for authentication
         case "authenticate": {
-          console.log(`attempting to authenticate at ${this.wazuhIP} under username ${this.username}`);
-          await this.authenticateUser(this.username, this.password);
-          break;
+          if (!this.username || !this.password) {
+            await turnContext.sendActivity(`No valid credentials found. If you wish to store your credentials, use the command 'update details`);
+            break;
+          } else {
+            console.log(`attempting to authenticate at ${this.wazuhIP} under username ${this.username}`);
+            await this.authenticateUser(this.username, this.password);
+            break;
+          }
         }
 
         //try and list all agents on the wazuh configuration
@@ -111,10 +115,10 @@ export class TeamsBot extends TeamsActivityHandler {
         }
 
         case "server address": {
-          if (!this.wazuhIP){
+          if (!this.wazuhIP) {
             await turnContext.sendActivity(`No server address for Wazuh is currently stored. If you wish to set up a new server address, please reply 'change ip'`);
             break;
-          } else{
+          } else {
             await turnContext.sendActivity(this.wazuhIP);
             break;
           }
@@ -127,8 +131,13 @@ export class TeamsBot extends TeamsActivityHandler {
 
         //only for testing
         case "username": {
-          await turnContext.sendActivity(this.username);
-          break;
+          if (!this.username || !this.password) {
+            await turnContext.sendActivity(`No valid credentials found. If you wish to store your credentials, use the command 'update details`);
+            break;
+          } else {
+            await turnContext.sendActivity(this.username);
+            break;
+          }
         }
 
         case "restart agent": {
@@ -139,6 +148,10 @@ export class TeamsBot extends TeamsActivityHandler {
         case "get sca": {
           await this.getSCACard(turnContext);
           break;
+        }
+
+        case "view summary": {
+          await this.getSummary(turnContext);
         }
       }
 
@@ -183,20 +196,7 @@ export class TeamsBot extends TeamsActivityHandler {
     await turnContext.sendActivity(introMessage);
   }
 
-  private async handlePingCommand(turnContext: TurnContext): Promise<void> {
-    // Execute the ping command
-    exec('ping -c 4 8.8.8.8', (error, stdout, stderr) => {
-      if (error) {
-        console.error(`exec error: ${error}`);
-        turnContext.sendActivity("Failed to ping 8.8.8.8");
-        return;
-      }
 
-      // Send the result of the ping command back to the user
-      // Note: stdout will contain the ping command output
-      turnContext.sendActivity(`Ping result:\n\n${stdout}`);
-    });
-  }
 
   //tries to authenticate to Wazuh using the basic authentication from the API (see reference document)
   private async authenticateUser(username, password) {
@@ -327,6 +327,98 @@ export class TeamsBot extends TeamsActivityHandler {
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
   }
 
+  private async getSummary(turnContext: TurnContext): Promise<void>{
+    if (!this.jwtToken) {
+      await turnContext.sendActivity("Authentication required. Please use 'authenticate' first.");
+      return;
+    }
+    const endpoint = `https://${this.wazuhIP}:55000/agents/summary/status`;
+    try {
+      const response = await axios.get(endpoint, {
+        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+      });
+
+      const summary = response.data.data.affected_items;
+      if (summary.length > 0) {
+        // Assuming we only display the first item for simplicity
+        const summaryDisplay = summary[0];
+        let cardTemplate = {
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "type": "AdaptiveCard",
+            "version": "1.4",
+            "body": [
+              {
+                "type": "TextBlock",
+                "text": "Connection Summary",
+                "wrap": true,
+                "size": "Large",
+                "weight": "Bolder"
+            },
+            {
+                "type": "TextBlock",
+                "text": `Active: ${summary.connection.active}`,
+                "wrap": true
+            },
+            {
+                "type": "TextBlock",
+                "text": `Disconnected: ${summary.connection.disconnected}`,
+                "wrap": true
+            },
+            {
+                "type": "TextBlock",
+                "text": `Never Connected: ${summary.connection.never_connected}`,
+                "wrap": true
+            },
+            {
+                "type": "TextBlock",
+                "text": `Pending: ${summary.connection.pending}`,
+                "wrap": true
+            },
+            {
+                "type": "TextBlock",
+                "text": `Total Connections: ${summary.connection.total}`,
+                "wrap": true
+            },
+            {
+                "type": "TextBlock",
+                "text": "Config Summary",
+                "wrap": true,
+                "size": "Large",
+                "weight": "Bolder",
+                "separator": true
+            },
+            {
+                "type": "TextBlock",
+                "text": `Synced: ${summary.configuration.synced}`,
+                "wrap": true
+            },
+            {
+                "type": "TextBlock",
+                "text": `Not Synced: ${summary.configuration.not_synced}`,
+                "wrap": true
+            },
+            {
+                "type": "TextBlock",
+                "text": `Total Configurations: ${summary.configuration.total}`,
+                "wrap": true
+            }
+            ]
+        };
+
+        await turnContext.sendActivity({
+            attachments: [CardFactory.adaptiveCard(cardTemplate)]
+        });
+      } else {
+        await turnContext.sendActivity("No summary found.");
+      }
+    } catch (error) {
+      console.error('Error fetching SCA details:', error);
+      await turnContext.sendActivity("An error occurred while fetching the agent summary.");
+    }
+}
+  
+
   //handle the changeIP card being invoked
   private async handleChangeIPResponse(turnContext: TurnContext, data: any) {
     console.log(data.newIP);
@@ -419,8 +511,6 @@ export class TeamsBot extends TeamsActivityHandler {
       await turnContext.sendActivity('Invalid credentials provided. Please try again');
     }
   }
-
-
 
   private async sendRestartAgentCard(turnContext: TurnContext) {
     console.log("Sending form to restart Agent");
@@ -593,9 +683,6 @@ export class TeamsBot extends TeamsActivityHandler {
       await turnContext.sendActivity("An error occurred while retrieving the SCA details.");
     }
   }
-
-
-
 
   protected async onAdaptiveCardInvoke(turnContext: TurnContext, invokeValue: AdaptiveCardInvokeValue): Promise<AdaptiveCardInvokeResponse> {
     console.log(`Received an Adaptive Card Invoke.`);

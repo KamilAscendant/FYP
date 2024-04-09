@@ -26,6 +26,9 @@ export class TeamsBot extends TeamsActivityHandler {
   private wazuhIP: string = '192.168.1.176' //default IP address, left in for ease of use
   private username: string = 'wazuh' //default credentials for Wazuh installations
   private password: string = 'wazuh'
+  private currentAgentIndex: number = 0;
+  private agentList: any[] = [];
+
   constructor() {
     super();
     //const serverIP = 'https://192.168.1.110:55000/'
@@ -225,12 +228,11 @@ export class TeamsBot extends TeamsActivityHandler {
     }
   }
 
-  private async listActiveAgents(turnContext: TurnContext): Promise<void> {
+  private async listAllAgents(turnContext: TurnContext): Promise<void> {
     if (!this.jwtToken) {
       await turnContext.sendActivity("Authentication required. Please authenticate first.");
       return;
     }
-
 
     const agentsEndpoint = `https://${this.wazuhIP}:55000/agents`;
     try {
@@ -239,38 +241,12 @@ export class TeamsBot extends TeamsActivityHandler {
         httpsAgent: new https.Agent({ rejectUnauthorized: false })
       });
 
-      const agents = response.data.data.affected_items;
-      if (agents.length > 0) {
-        // mapping the relevant details onto the adaptive card body
-        const agentItems = agents.map(agent => ({
-            "type": "TextBlock",
-            "wrap": true,
-            "text": `**ID:** ${agent.id} \n**Name:** ${agent.name} \n**Status:** ${agent.status}`
-        }));
+      this.agentList = response.data.data.affected_items; // Store agents list
+      this.currentAgentIndex = 0; // Reset index to start from the first agent
 
-        // Template for adaptive card
-        let cardTemplate = {
-            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-            "type": "AdaptiveCard",
-            "version": "1.4",
-            "body": [
-                {
-                    "type": "TextBlock",
-                    "size": "Medium",
-                    "weight": "Bolder",
-                    "text": "Wazuh Agents"
-                },
-                {
-                    "type": "Container",
-                    "items": agentItems,
-                    "id": "agentsContainer"
-                }
-            ]
-        };
-
-        await turnContext.sendActivity({
-            attachments: [CardFactory.adaptiveCard(cardTemplate)]
-        });
+      if (this.agentList.length > 0) {
+        // Call method to send an Adaptive Card for the current (first) agent
+        await this.sendAgentInfoCard(turnContext);
       } else {
         await turnContext.sendActivity("No active agents found.");
       }

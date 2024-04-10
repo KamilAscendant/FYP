@@ -15,6 +15,7 @@ import rawSorryCard from "./adaptiveCards/Sorry.json";
 //const agentListCardTemplate = require("./adaptiveCards/agentList.json");
 import axios, { AxiosRequestConfig } from 'axios';
 import { exec } from "child_process";
+import { parse } from "path";
 export interface DataInterface {
 }
 
@@ -62,10 +63,26 @@ export class TeamsBot extends TeamsActivityHandler {
 
       console.log(txt);
       // Trigger command by IM text
-
-      switch (txt) {
-
-        case "hello": {
+      
+        // if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")){
+        //   return 'greeting';
+        // } else if (txt.includes("list") && txt.includes("agents")) {
+        //   return 'listAgents';
+        // } else if (txt.includes("introduction") || txt.includes("intro")){
+        //   return 'introduction';
+        // } else if (txt.includes("help")){
+        //   return 'help';
+        // } else if (txt.includes("authenticate") || (txt.includes("auth"))){
+        //   return 'authenticate';
+        // } else if (txt.includes("manage") || (txt.includes("management"))){
+        //   return 'agentManagement';
+        // } else if ((txt.includes("view") && ((txt.includes("ip") || (txt.includes("server")))))){
+        //   return 'serverAddress';
+        // } 
+      const getIntention = parseText(txt);
+      console.log(parseText(txt));
+      switch (getIntention) {
+        case "greeting": {
           console.log('hmm'); //debugging
           const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
           await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
@@ -84,7 +101,7 @@ export class TeamsBot extends TeamsActivityHandler {
         }
 
         //loads the card that gives you the choice between listing and deleting agents
-        case "agents": {
+        case "agentManagement": {
           const card = AdaptiveCards.declare<DataInterface>(rawAgentCard).render();
           await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
           break;
@@ -103,7 +120,7 @@ export class TeamsBot extends TeamsActivityHandler {
         }
 
         //try and list all agents on the wazuh configuration
-        case "list all": {
+        case "listAgents": {
           await this.listAllAgents(turnContext);
           break;
         }
@@ -113,12 +130,12 @@ export class TeamsBot extends TeamsActivityHandler {
         //   break;
         // }
 
-        case "change ip": {
+        case "changeIP": {
           await this.sendChangeIPCard(turnContext);
           break;
         }
 
-        case "server address": {
+        case "serverAddress": {
           if (!this.wazuhIP) {
             await turnContext.sendActivity(`No server address for Wazuh is currently stored. If you wish to set up a new server address, please reply 'change ip'`);
             break;
@@ -128,7 +145,7 @@ export class TeamsBot extends TeamsActivityHandler {
           }
         }
 
-        case "update details": {
+        case "updateDetails": {
           await this.sendChangeDetailsCard(turnContext);
           break;
         }
@@ -144,21 +161,21 @@ export class TeamsBot extends TeamsActivityHandler {
           }
         }
 
-        case "restart agent": {
+        case "restartAgent": {
           await this.sendRestartAgentCard(turnContext);
           break;
         }
 
-        case "get sca": {
+        case "getSca": {
           await this.getSCACard(turnContext);
           break;
         }
 
-        case "view summary": {
+        case "viewSummary": {
           await this.getSummary(turnContext);
         }
 
-        case "mitre group lookup":{
+        case "mitreGroupLookup":{
           await this.sendGroupLookupCard(turnContext);
           break;
         }
@@ -167,6 +184,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
       await next();
     });
+    
     //automatic message on greeting new member in chat. This is from the template.
     this.onMembersAdded(async (context, next) => {
       const membersAdded = context.activity.membersAdded;
@@ -1004,3 +1022,36 @@ export class TeamsBot extends TeamsActivityHandler {
 }
 
 
+function parseText(txt){
+  switch(txt.includes){
+    case("hello" || "hi" || "hey"):
+      console.log('debug');
+      return 'greeting'
+    case("list" && "agents"):
+      return 'listAgents'
+    case("introduction" || "intro" || "introduce"):
+      return 'introduction'
+    case("help"):
+      return 'help'
+    case ("authenticate" || "auth"):
+      return 'authenticate'
+    case (("agent" || "agents") && ("manage" || "management")):
+      return 'agentManagement'
+    case ("view" && ("ip" || "server" || "address")):
+      return 'serverAddress'
+    case ("change" && ("ip" || "address")):
+      return 'changeIP';
+    case (("change" || "update") && ("details" || "credentials")):
+      return 'updateDetails';
+    case ("view" && ("username" || "credentials")):
+      return 'username';
+    case (("restart" || "reboot") && "agent"):
+      return 'restartAgent'
+    case ("sca"):
+      return 'getSca'
+    case ("summary" || "summarise" || "summarize"):
+      return 'viewSummary'
+    case ("mitre" && "group"):
+      return 'mitreGroupLookup'
+  }
+}

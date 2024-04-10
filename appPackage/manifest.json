@@ -15,12 +15,12 @@
         "outline": "outline.png"
     },
     "name": {
-        "short": "SecurityMessagingLogic-${{TEAMSFX_ENV}}",
-        "full": "full name for SecurityMessagingLogic"
+        "short": "WazuhBot",
+        "full": "A Microsoft Teams chatbot meant to manage the functionality of a Wazuh SIEM Installation."
     },
     "description": {
-        "short": "short description for SecurityMessagingLogic",
-        "full": "full description for SecurityMessagingLogic"
+        "short": "A chatbot to manage a Wazuh SIEM",
+        "full": "A Microsoft Teams chatbot designed to manage the functionality of a Wazuh SIEM installation. Developed by Kamil Abrar for the RHUL InfoSec Final Year Project 'A Chatbot to Manage Security Services'"
     },
     "accentColor": "#FFFFFF",
     "bots": [
@@ -42,12 +42,32 @@
                     ],
                     "commands": [
                         {
-                            "title": "welcome",
-                            "description": "Resend welcome card of this Bot"
+                            "title": "Hello",
+                            "description": "View the bot's greeting and basic functionality"
                         },
                         {
-                            "title": "learn",
-                            "description": "Learn about Adaptive Card and Bot Command"
+                            "title": "Introduction",
+                            "description": "Resend the introductory message"
+                        },
+                        {
+                            "title": "Help",
+                            "description": "View the user manual and basic command suggestions"
+                        },
+                        {
+                            "title": "Change Details",
+                            "description": "Update your stored credentials"
+                        },
+                        {
+                            "title": "Set Wazuh IP",
+                            "description": "Update the server address for the Wazuh installation"
+                        },
+                        {
+                            "title": "Authenticate",
+                            "description": "Use your saved details to temporarily authenticate to Wazuh"
+                        },
+                        {
+                            "title": "Log Out",
+                            "description": "Delete currently stored credentials and stored JWT"
                         }
                     ]
                 }

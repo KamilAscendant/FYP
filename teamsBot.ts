@@ -1019,39 +1019,45 @@ export class TeamsBot extends TeamsActivityHandler {
       value: undefined
     };
   }
+
+  
 }
 
 
-function parseText(txt){
-  switch(txt.includes){
-    case("hello" || "hi" || "hey"):
+function parseText(txt) {
+  if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")) {
       console.log('debug');
-      return 'greeting'
-    case("list" && "agents"):
-      return 'listAgents'
-    case("introduction" || "intro" || "introduce"):
-      return 'introduction'
-    case("help"):
-      return 'help'
-    case ("authenticate" || "auth"):
-      return 'authenticate'
-    case (("agent" || "agents") && ("manage" || "management")):
-      return 'agentManagement'
-    case ("view" && ("ip" || "server" || "address")):
-      return 'serverAddress'
-    case ("change" && ("ip" || "address")):
+      return 'greeting';
+  } else if (txt.includes("list") && txt.includes("agents")) {
+      return 'listAgents';
+  } else if (txt.includes("introduction") || txt.includes("intro") || txt.includes("introduce")) {
+      return 'introduction';
+  } else if (txt.includes("help")) {
+      return 'help';
+  } else if (txt.includes("authenticate") || txt.includes("auth")) {
+      return 'authenticate';
+  } else if ((txt.includes("agent") || txt.includes("agents")) && (txt.includes("manage") || txt.includes("management"))) {
+      return 'agentManagement';
+  } else if (txt.includes("view") && (txt.includes("ip") || txt.includes("server") || txt.includes("address"))) {
+      return 'serverAddress';
+  } else if (txt.includes("change") && (txt.includes("ip") || txt.includes("address"))) {
       return 'changeIP';
-    case (("change" || "update") && ("details" || "credentials")):
+  } else if ((txt.includes("change") || txt.includes("update")) && (txt.includes("details") || txt.includes("credentials"))) {
       return 'updateDetails';
-    case ("view" && ("username" || "credentials")):
+  } else if (txt.includes("view") && (txt.includes("username") || txt.includes("credentials"))) {
       return 'username';
-    case (("restart" || "reboot") && "agent"):
-      return 'restartAgent'
-    case ("sca"):
-      return 'getSca'
-    case ("summary" || "summarise" || "summarize"):
-      return 'viewSummary'
-    case ("mitre" && "group"):
-      return 'mitreGroupLookup'
+  } else if ((txt.includes("restart") || txt.includes("reboot")) && txt.includes("agent")) {
+      return 'restartAgent';
+  } else if (txt.includes("sca")) {
+      return 'getSca';
+  } else if (txt.includes("summary") || txt.includes("summarise") || txt.includes("summarize")) {
+      return 'viewSummary';
+  } else if (txt.includes("mitre") && txt.includes("group")) {
+      return 'mitreGroupLookup';
+  } else{
+    return 'unknown';
   }
+
+  
 }
+

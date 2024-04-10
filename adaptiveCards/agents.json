@@ -2,27 +2,56 @@
   "type": "AdaptiveCard",
   "body": [
     {
-      "type": "TextBlock",
-      "size": "Medium",
-      "weight": "Bolder",
-      "text": "You've selected Agents"
-    },
-    {
-      "type": "TextBlock",
-      "text": "Would you like to view the list of currently running Agents, or Delete a particular Agent (not added yet)?",
-      "wrap": true
+      "type": "Container",
+      "style": "accent",
+      "items": [
+        {
+          "type": "Container",
+          "style": "Emphasis",
+          "items": [
+            {
+              "type": "TextBlock",
+              "size": "Medium",
+              "weight": "Bolder",
+              "text": "You've selected Agents"
+            }
+          ]
+        },
+        {
+          "type": "Container",
+          "style": "default",
+          "items": [
+            {
+              "type": "TextBlock",
+              "size": "Medium",
+              "text": "Would you like to view all agents, restart an agent, or delete an agent?",
+              "wrap": true
+            }
+          ],
+          "bleed": true
+        }
+      ],
+      "bleed": true
     }
   ],
   "actions": [
     {
       "type": "Action.Execute",
       "title": "Agent List",
-      "verb": "listagent"
+      "verb": "listagents",
+      "style": "positive"
+    },
+    {
+      "type": "Action.Execute",
+      "title": "Restart Agent",
+      "verb": "restartagent",
+      "style": "positive"
     },
     {
       "type": "Action.Execute",
       "title": "Delete Agent",
-      "verb": "sorry"
+      "verb": "deleteagent",
+      "style": "destructive"
     }
   ],
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",

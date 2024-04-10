@@ -1,0 +1,45 @@
+{
+  "type": "AdaptiveCard",
+  "body": [
+    {
+        "type": "Container",
+        "style": "accent",
+        "items": [
+            {
+                "type": "TextBlock",
+                "text": "Welcome to the WazuhBot!",
+                "wrap": true,
+                "size": "Medium",
+                "weight": "Bolder",
+                "color": "Dark"
+            },
+            {
+                "type": "TextBlock",
+                "text": "Select an option to get started.",
+                "wrap": true,
+                "color": "Default"
+            }
+        ],
+        "bleed": true
+    }
+],
+  "actions": [
+      {
+          "type": "Action.Execute",
+          "title": "Update Details",
+          "verb": "senddetailscard" 
+      },
+      {
+          "type": "Action.Execute",
+          "title": "Change IP",
+          "verb": "sendipcard" 
+      },
+      {
+          "type": "Action.Execute",
+          "title": "Help",
+          "verb": "sendhelp" 
+      }
+  ],
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4"
+}

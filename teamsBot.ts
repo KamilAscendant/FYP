@@ -8,7 +8,7 @@ import {
   MessageFactory,
 } from "botbuilder";
 import https from 'https'
-import rawInitialiseCard from "./adaptiveCards/initialise.json";
+import rawWelcomeCard from "./adaptiveCards/welcome.json";
 import rawAgentCard from "./adaptiveCards/agents.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 import rawSorryCard from "./adaptiveCards/Sorry.json";
@@ -42,6 +42,7 @@ export class TeamsBot extends TeamsActivityHandler {
         const member = membersAdded[count];
         if (member.name) {
           await context.sendActivity(`Hello ${member.name}! Welcome to Kamil's WazuhBot.`);
+          await this.introInteraction(context);
           break;
         }
       }
@@ -66,7 +67,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
         case "hello": {
           console.log('hmm'); //debugging
-          const card = AdaptiveCards.declareWithoutData(rawInitialiseCard).render();
+          const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
           await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
           break;
         }
@@ -173,7 +174,7 @@ export class TeamsBot extends TeamsActivityHandler {
         if (membersAdded[cnt].id) {
           await context.sendActivity('Hello there, friend!');
           //await context.sendActivity(membersAdded[cnt].id);
-          const card = AdaptiveCards.declareWithoutData(rawInitialiseCard).render();
+          const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
           await context.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
           break;
         }
@@ -553,6 +554,38 @@ export class TeamsBot extends TeamsActivityHandler {
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(restartAgent)] });
   }
 
+  private async sendDeleteAgentCard(turnContext: TurnContext) {
+    console.log("Sending form to delete Agent");
+    const restartAgent = {
+      "type": "AdaptiveCard",
+      "body": [
+        {
+          "type": "TextBlock",
+          "text": "Enter the ID of the Agent to be deleted:",
+          "wrap": true
+        },
+        {
+          "type": "Input.Text",
+          "id": "deleteID",
+          "placeholder": "e.g., 001",
+          "isRequired": true,
+          "label": "Target Agent ID"
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.Execute",
+          "title": "Delete Agent",
+          "verb": "deleteID"
+        }
+      ],
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
+    };
+
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(restartAgent)] });
+  }
+
   private async restartAgent(turnContext: TurnContext, data: any) {
     const endpoint = `https://${this.wazuhIP}:55000/agents/${data.restartID}/restart`;
     try {
@@ -570,6 +603,26 @@ export class TeamsBot extends TeamsActivityHandler {
     } catch (error) {
       console.error(`Error restarting agent with ID ${data.restartID}:`, error);
       await turnContext.sendActivity(`An error occurred while restarting agent with ID ${data.restartID}.`);
+    }
+  }
+
+  private async deleteAgent(turnContext: TurnContext, data: Record<string, unknown>) {
+    const endpoint = `https://${this.wazuhIP}:55000/agents?agents_list=${data.deleteID}`;
+    try {
+      const response = await axios.delete(endpoint, {
+        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false }) //self-signed SSL certificate issue - no idea how to bypass, Wazuh reference documents just say it's normal
+      });
+      console.log(response.status);
+      if (response.status === 200) {
+        await turnContext.sendActivity(`Agent with ID ${data.restartID} deleted.`);
+        console.log(`Agent with ID ${data.restartID} successfully deleted`);
+      } else {
+        await turnContext.sendActivity(`Failed to delete agent with ID ${data.restartID}.`);
+      }
+    } catch (error) {
+      console.error(`Error deleting agent with ID ${data.restartID}:`, error);
+      await turnContext.sendActivity(`An error occurred while deleting agent with ID ${data.restartID}.`);
     }
   }
 
@@ -885,6 +938,10 @@ export class TeamsBot extends TeamsActivityHandler {
         console.log(`Restarting agent with id ${JSON.stringify(invokeValue.action.data)}`);
         await this.restartAgent(turnContext, invokeValue.action.data);
         break;
+      case 'deleteID':
+        console.log(`Restarting agent with id ${JSON.stringify(invokeValue.action.data)}`);
+        await this.deleteAgent(turnContext, invokeValue.action.data);
+        break;
       case "shownext":
         this.currentAgentIndex = Math.min(this.currentAgentIndex + 1, this.agentList.length - 1);
         await this.sendAgentInfoCard(turnContext);
@@ -892,6 +949,15 @@ export class TeamsBot extends TeamsActivityHandler {
       case "showprev":
         this.currentAgentIndex = Math.max(this.currentAgentIndex - 1, 0);
         await this.sendAgentInfoCard(turnContext);
+        break;
+      case "listagents":
+        await this.listAllAgents(turnContext);
+        break;
+      case "deleteagent":
+        await this.sendDeleteAgentCard(turnContext);
+        break;
+      case "restartagent":
+        await this.sendRestartAgentCard(turnContext);
         break;
       case "fetchsca":
         await turnContext.sendActivity(`Fetching SCA Information for Agent ${JSON.stringify(invokeValue.action.data)}`);
@@ -915,6 +981,14 @@ export class TeamsBot extends TeamsActivityHandler {
       case "groupsimple":
         await this.sendGroupInfoCard(turnContext);
         break;
+      case "senddetailscard":
+        await this.sendChangeDetailsCard(turnContext);
+        break;
+      case "sendipcard":
+        await this.sendChangeIPCard(turnContext);
+        break;
+      case "sendhelp":
+        await this.handleHelp(turnContext);
       default:
         console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
         break;

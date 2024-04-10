@@ -2,17 +2,25 @@
 	"type": "AdaptiveCard",
 	"body": [
 		{
+		 "type": "Container",
+		 "style": "accent",
+		 "items": [
+			{
 			"type": "TextBlock",
 			"size": "Medium",
 			"weight": "Bolder",
-			"text": "Sorry :("
-		},
-		
-		{
+			"text": "Sorry :(",
+			"color": "Attention"
+			},
+			{
 			"type": "TextBlock",
-			"text": "This is currently under construction. Try again soon!",
+			"text": "Something went wrong. Please try again.",
+			"color": "attention",
 			"wrap": true
-		}
+			}
+	],
+	"bleed": true
+}
 	],
 	"$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
 	"version": "1.4"

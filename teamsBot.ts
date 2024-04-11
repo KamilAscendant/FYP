@@ -236,7 +236,7 @@ export class TeamsBot extends TeamsActivityHandler {
       await next();
     });
   }
-  
+
   private async handleGetManagerInfo(turnContext: TurnContext) {
     if (!this.jwtToken) {
       await turnContext.sendActivity("Authentication required. Please use 'authenticate' first.");
@@ -791,7 +791,8 @@ private async handleRevocation(turnContext: TurnContext) {
   }
 
   private async deleteAgent(turnContext: TurnContext, data: Record<string, unknown>) {
-    const endpoint = `https://${this.wazuhIP}:55000/agents?agents_list=${data.deleteID}`;
+    const endpoint = `https://${this.wazuhIP}:55000/agents?agents_list=${data.deleteID}&status=all&older_than=10s`;
+    console.log('deleting agent');
     try {
       const response = await axios.delete(endpoint, {
         headers: { 'Authorization': `Bearer ${this.jwtToken}` },
@@ -799,14 +800,14 @@ private async handleRevocation(turnContext: TurnContext) {
       });
       console.log(response.status);
       if (response.status === 200) {
-        await turnContext.sendActivity(`Agent with ID ${data.restartID} deleted.`);
-        console.log(`Agent with ID ${data.restartID} successfully deleted`);
+        await turnContext.sendActivity(`Agent with ID ${data.deleteID} deleted.`);
+        console.log(`Agent with ID ${data.deleteID} successfully deleted`);
       } else {
-        await turnContext.sendActivity(`Failed to delete agent with ID ${data.restartID}.`);
+        await turnContext.sendActivity(`Failed to delete agent with ID ${data.deleteID}.`);
       }
     } catch (error) {
-      console.error(`Error deleting agent with ID ${data.restartID}:`, error);
-      await turnContext.sendActivity(`An error occurred while deleting agent with ID ${data.restartID}.`);
+      console.error(`Error deleting agent with ID ${data.deleteID}:`, error);
+      await turnContext.sendActivity(`An error occurred while deleting agent with ID ${data.deleteID}.`);
     }
   }
 
@@ -1224,7 +1225,7 @@ private async sendLogSummaryCard(turnContext: TurnContext, logSummary: any[]): P
         await this.restartAgent(turnContext, invokeValue.action.data);
         break;
       case 'deleteID':
-        console.log(`Restarting agent with id ${JSON.stringify(invokeValue.action.data)}`);
+        console.log(`Deleting agent with id ${JSON.stringify(invokeValue.action.data)}`);
         await this.deleteAgent(turnContext, invokeValue.action.data);
         break;
       case "shownext":

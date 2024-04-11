@@ -58,12 +58,24 @@
                             "description": "Update your stored credentials"
                         },
                         {
-                            "title": "Set Wazuh IP",
+                            "title": "Change Server Address",
                             "description": "Update the server address for the Wazuh installation"
                         },
                         {
                             "title": "Authenticate",
                             "description": "Use your saved details to temporarily authenticate to Wazuh"
+                        },
+                        {
+                            "title": "View Profile",
+                            "description": "View the currently set-up user account"
+                        },
+                        {
+                            "title": "Agent Management",
+                            "description": "Open the agent management menu"
+                        },
+                        {
+                            "title": "Mitre Group Lookup",
+                            "description": "Search the MITRE Group Database for a specific term"
                         },
                         {
                             "title": "Log Out",

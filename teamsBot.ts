@@ -186,6 +186,12 @@ export class TeamsBot extends TeamsActivityHandler {
         case "showProfile":{
           await this.generateProfile(turnContext);
         }
+
+        case "welcome":{
+          const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
+          await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+          break;
+        }
       }
 
 
@@ -250,6 +256,10 @@ export class TeamsBot extends TeamsActivityHandler {
       console.error('Error logging out', error);
       await turnContext.sendActivity("An error occurred while logging out.", error);
     }
+    this.wazuhIP=null;
+    this.username=null;
+    this.password=null;
+    await turnContext.sendActivity('Logged out successfully');
   }
 }
 
@@ -909,46 +919,49 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
   private async generateProfile(turnContext: TurnContext) {
-    const isAuthenticated = this.jwtToken ? "Authenticated: True" : "Authenticated: False";
-  const profileCard = {
-    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-    "type": "AdaptiveCard",
-    "version": "1.4",
-    "body": [
-      {
-        "type": "TextBlock",
-        "size": "Medium",
-        "weight": "Bolder",
-        "text": "Profile Information"
-      },
-      {
-        "type": "FactSet",
-        "facts": [
-          {
-            "title": "Wazuh Server:",
-            "value": this.wazuhIP
-          },
-          {
-            "title": "Username:",
-            "value": this.username
-          },
-          {
-            "title": "Authentication Status:",
-            "value": isAuthenticated
-          }
-        ]
-      }
-    ],
-    "actions": [
-      {
-        "type": "Action.Submit",
-        "title": "Log Out",
-        "data": { "action": "logout" }
-      }
-    ]
-  };
-
-  await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(profileCard)] });
+    const isAuthenticated = this.jwtToken ? "True" : "False";
+    const profileCard = {
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "type": "AdaptiveCard",
+      "version": "1.4",
+      "body": [
+        {
+          "type": "TextBlock",
+          "size": "Medium",
+          "weight": "Bolder",
+          "text": "Profile Information"
+        },
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "Wazuh Server:",
+              "value": this.wazuhIP
+            },
+            {
+              "title": "Username:",
+              "value": this.username
+            },
+            {
+              "title": "Authentication Status:",
+              "value": isAuthenticated
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.Execute",
+          "title": "Log Out",
+          "verb": "logout"
+        }
+      ]
+    };
+    if (this.username == null && this.password == null && this.wazuhIP == null && isAuthenticated == 'False'){
+      await turnContext.sendActivity('No details found.')
+    } else{
+      await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(profileCard)] });
+    }
 }
 
   private async sendGroupDetailCard(turnContext: TurnContext) {
@@ -1078,6 +1091,11 @@ export class TeamsBot extends TeamsActivityHandler {
         break;
       case "sendhelp":
         await this.handleHelp(turnContext);
+        break;
+      case "logout":
+        await turnContext.sendActivity('Logging out.');
+        await this.handleLogout;
+        break;
       default:
         console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
         break;
@@ -1099,6 +1117,8 @@ function parseText(txt) {
   if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")) {
       console.log('debug');
       return 'greeting';
+  } else if (txt.includes("welcome") || txt.includes("start")){
+      return 'welcome';
   } else if (txt.includes("list") && txt.includes("agents")) {
       return 'listAgents';
   } else if (txt.includes("introduction") || txt.includes("intro") || txt.includes("introduce")) {
@@ -1125,7 +1145,7 @@ function parseText(txt) {
       return 'viewSummary';
   } else if (txt.includes("mitre") && txt.includes("group")) {
       return 'mitreGroupLookup';
-  } else if (txt.includes("logout") || (txt.incudes("log") && (txt.includes("out")))) {
+  } else if (txt.includes("logout") || (txt.includes("log") && (txt.includes("out")))) {
     return 'logout';
   }else if((txt.includes('view') || txt.includes('my') || txt.includes('show')) && (txt.includes('profile') || (txt.includes('account'))) ) {
     return 'showProfile';

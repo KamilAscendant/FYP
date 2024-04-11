@@ -233,13 +233,10 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
   private async handleHelp(turnContext: TurnContext) {
-    await turnContext.sendActivity("Sure! Here are some commands you can use:");
-    await turnContext.sendActivity("'Introduction': Learn more about WazuhBot.");
-    await turnContext.sendActivity("'Agents': View a list of all Wazuh agents.");
-    await turnContext.sendActivity("'Authenticate': Input username and password to verify access to Wazuh server .");
-    await turnContext.sendActivity("this is a placeholder - will be replaced with an adaptive card");
-  }
-
+    const userManualUrl = "https://docs.google.com/document/d/1ROWjphhlBiYXnxizcDC__5Aaxw8OzukGxZwlzSa5xh0/edit?usp=sharing";
+    const userManualText = "Click here to access the User Manual for WazuhBot.";
+    await turnContext.sendActivity(`Sure! Here is the user manual for WazuhBot: [User Manual](${userManualUrl})`);
+}
   private async introInteraction(turnContext: TurnContext) {
     const userName = turnContext.activity.from.name || 'user'; // Fallback to 'user' if the name isn't available
     const time = new Date().getHours();

@@ -210,6 +210,11 @@ export class TeamsBot extends TeamsActivityHandler {
           await turnContext.sendActivity("Generating log summary. This can take a while.");
           await this.handleLogSummary(turnContext);
         }
+
+        case "getManagerInfo":{
+          await turnContext.sendActivity("Fetching Wazuh manager info");
+          await this.handleGetManagerInfo(turnContext);
+        }
       }
 
 
@@ -231,6 +236,88 @@ export class TeamsBot extends TeamsActivityHandler {
       await next();
     });
   }
+  
+  private async handleGetManagerInfo(turnContext: TurnContext) {
+    if (!this.jwtToken) {
+      await turnContext.sendActivity("Authentication required. Please use 'authenticate' first.");
+      return;
+    }
+    const endpoint = `https://${this.wazuhIP}:55000/manager/info`;
+    try {
+      const response = await axios.get(endpoint, {
+        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+      });
+  
+      const managerInfo = response.data.data.affected_items[0];
+      if (managerInfo) {
+        let cardTemplate = {
+          "body": [
+            {
+              "type": "TextBlock",
+              "text": "Manager Information",
+              "wrap": true,
+              "size": "Large",
+              "weight": "Bolder"
+            },
+            {
+              "type": "TextBlock",
+              "text": `Path: ${managerInfo.path}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Version: ${managerInfo.version}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Compilation Date: ${managerInfo.compilation_date}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Type: ${managerInfo.type}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Max Agents: ${managerInfo.max_agents}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `OpenSSL Support: ${managerInfo.openssl_support}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Timezone Offset: ${managerInfo.tz_offset}`,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": `Timezone Name: ${managerInfo.tz_name}`,
+              "wrap": true
+            }
+          ],
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "type": "AdaptiveCard",
+          "version": "1.4",
+        };
+  
+        await turnContext.sendActivity({
+          attachments: [CardFactory.adaptiveCard(cardTemplate)]
+        });
+      } else {
+        await turnContext.sendActivity("No manager information found.");
+      }
+    } catch (error) {
+      console.error('Error fetching manager information', error);
+      await turnContext.sendActivity("An error occurred.");
+    }
+  }
+  
 
   private async handleHelp(turnContext: TurnContext) {
     const userManualUrl = "https://docs.google.com/document/d/1ROWjphhlBiYXnxizcDC__5Aaxw8OzukGxZwlzSa5xh0/edit?usp=sharing";
@@ -1256,6 +1343,8 @@ function parseText(txt) {
     return 'logSummary';
   }else if(txt.includes('revoke') && (txt.includes('jwt') || txt.includes('token'))){
     return 'revokeJWT';
+  }else if(txt.includes('manager') && txt.includes('info')){
+    return 'getManagerInfo'
   } else{
   return 'unknown';
   }

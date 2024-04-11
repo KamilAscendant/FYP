@@ -39,6 +39,15 @@ describe('TeamsBot Greeting on New Member Added', () => {
         .assertReply(helpTest);
     });
   });
+
+  describe('View Server Address Command', () => {
+    it('should return the default ip', async () => {
+      const adapter = new TestAdapter(async (turnContext) => await bot.run(turnContext));
+      await adapter.send('view server address')
+        .assertReply('192.168.0.41');
+    });
+  });
+  
   
     const userManualUrl = "https://docs.google.com/document/d/1ROWjphhlBiYXnxizcDC__5Aaxw8OzukGxZwlzSa5xh0/edit?usp=sharing";
     const userManualText = "Click here to access the User Manual for WazuhBot.";

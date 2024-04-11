@@ -39,13 +39,19 @@
       "type": "Action.Execute",
       "title": "Agent List",
       "verb": "listagents",
-      "style": "positive"
+      "style": "default"
     },
     {
       "type": "Action.Execute",
       "title": "Restart Agent",
       "verb": "restartagent",
       "style": "positive"
+    },
+    {
+      "type": "Action.Execute",
+      "title": "Stop Agent",
+      "verb": "stopagent",
+      "style": "destructive"
     },
     {
       "type": "Action.Execute",

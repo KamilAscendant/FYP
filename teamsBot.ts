@@ -23,7 +23,7 @@ export class TeamsBot extends TeamsActivityHandler {
   runningAgents: any[] = [];
   currentAgent: number = 0;
   jwtToken: any;
-  private wazuhIP: string = '10.2.186.109' //default IP address, left in for ease of use
+  private wazuhIP: string = '192.168.0.41' //default IP address, left in for ease of use
   private username: string = 'wazuh' //default credentials for Wazuh installations
   private password: string = 'wazuh'
 
@@ -114,7 +114,7 @@ export class TeamsBot extends TeamsActivityHandler {
             break;
           } else {
             console.log(`attempting to authenticate at ${this.wazuhIP} under username ${this.username}`);
-            await this.authenticateUser(this.username, this.password);
+            await this.authenticateUser(turnContext, this.username, this.password);
             break;
           }
         }
@@ -181,10 +181,12 @@ export class TeamsBot extends TeamsActivityHandler {
         }
         case "logout":{
           await this.handleLogout(turnContext);
+          break;
         }
 
         case "showProfile":{
           await this.generateProfile(turnContext);
+          break;
         }
 
         case "welcome":{
@@ -264,8 +266,9 @@ export class TeamsBot extends TeamsActivityHandler {
 }
 
   //tries to authenticate to Wazuh using the basic authentication from the API (see reference document)
-  private async authenticateUser(username, password) {
+  private async authenticateUser(turnContext: TurnContext, username, password) {
     const wazuhEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate`; //takes the wazuhIP stored - now works for diff setups
+    await turnContext.sendActivity(`attempting to authenticate at ${wazuhEndpoint} under username ${this.username}`);
     try {
       const response = await axios.post(wazuhEndpoint, {}, {
         auth: {
@@ -280,6 +283,9 @@ export class TeamsBot extends TeamsActivityHandler {
       const jwtToken = response.data.data.token;
       console.log('JWT token received:', jwtToken);
       this.jwtToken = jwtToken;
+      if(!(!jwtToken)){
+        await turnContext.sendActivity('Authentication Successful!');
+      };
       setTimeout(() => {
         this.jwtToken = null;
         console.log('Wazuh tokens are only valid for 900 seconds.'); //this can be changed, but 900 seemed sufficient
@@ -289,6 +295,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
     }
     catch (error) {
+      await turnContext.sendActivity('Unable to authenticate');
       console.error('Error while authenticating user:', error.message);
       return null;
     }
@@ -1095,6 +1102,9 @@ export class TeamsBot extends TeamsActivityHandler {
       case "logout":
         await turnContext.sendActivity('Logging out.');
         await this.handleLogout;
+        break;
+      case "sendintro":
+        await this.introInteraction(turnContext);
         break;
       default:
         console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);

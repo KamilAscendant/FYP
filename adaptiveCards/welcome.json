@@ -26,6 +26,11 @@
   "actions": [
       {
           "type": "Action.Execute",
+          "title": "Introduction",
+          "verb": "sendintro"
+      },
+      {
+          "type": "Action.Execute",
           "title": "Update Details",
           "verb": "senddetailscard" 
       },

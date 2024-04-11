@@ -31,3 +31,15 @@ describe('TeamsBot Greeting on New Member Added', () => {
         .assertReply('Authentication Successful!');
     });
   });
+
+  describe('Help Command', () => {
+    it('should return the help message', async () => {
+      const adapter = new TestAdapter(async (turnContext) => await bot.run(turnContext));
+      await adapter.send('help')
+        .assertReply(helpTest);
+    });
+  });
+  
+    const userManualUrl = "https://docs.google.com/document/d/1ROWjphhlBiYXnxizcDC__5Aaxw8OzukGxZwlzSa5xh0/edit?usp=sharing";
+    const userManualText = "Click here to access the User Manual for WazuhBot.";
+    const helpTest = `Sure! Here is the user manual for WazuhBot: [User Manual](${userManualUrl})`

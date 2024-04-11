@@ -206,6 +206,11 @@ export class TeamsBot extends TeamsActivityHandler {
           await this.handleRevocation(turnContext);
           break;
         }
+
+        case "logSummary":{
+          await turnContext.sendActivity("Generating log summary. This can take a while.");
+          await this.handleLogSummary(turnContext);
+        }
       }
 
 
@@ -1060,6 +1065,61 @@ private async handleRevocation(turnContext: TurnContext) {
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(simpleGroupCard)] });
   }
 
+  private async handleLogSummary(turnContext: TurnContext): Promise<void> {
+    if (!this.jwtToken) {
+        await turnContext.sendActivity("Authentication required. Please authenticate first.");
+        return;
+    }
+    const endpoint = `https://${this.wazuhIP}:55000/manager/logs/summary`; // Modify as per actual API
+    try {
+        const response = await axios.get(endpoint, {
+            headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+            httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        });
+
+        const logSummary = response.data.data.affected_items;
+        await this.sendLogSummaryCard(turnContext, logSummary);
+    } catch (error) {
+        console.error('Error fetching log summary:', error);
+        await turnContext.sendActivity("An error occurred while retrieving the log summary.");
+    }
+}
+
+private async sendLogSummaryCard(turnContext: TurnContext, logSummary: any[]): Promise<void> {
+  const cardElements = logSummary.map(log => {
+      return {
+          "type": "FactSet",
+          "facts": [
+              { "title": "Module:", "value": Object.keys(log)[0] },
+              { "title": "Total:", "value": log[Object.keys(log)[0]].all.toString() },
+              { "title": "Info:", "value": log[Object.keys(log)[0]].info.toString() },
+              { "title": "Errors:", "value": log[Object.keys(log)[0]].error.toString() },
+              { "title": "Critical:", "value": log[Object.keys(log)[0]].critical.toString() },
+              { "title": "Warnings:", "value": log[Object.keys(log)[0]].warning.toString() },
+              { "title": "Debugs:", "value": log[Object.keys(log)[0]].debug.toString() }
+          ]
+      };
+  });
+
+  const logSummaryCard = {
+      "type": "AdaptiveCard",
+      "body": [
+          {
+              "type": "TextBlock",
+              "text": "Log Summary",
+              "size": "Large",
+              "weight": "Bolder"
+          },
+          ...cardElements
+      ],
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "version": "1.4"
+  };
+
+  await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(logSummaryCard)] });
+}
+
+
   protected async onAdaptiveCardInvoke(turnContext: TurnContext, invokeValue: AdaptiveCardInvokeValue): Promise<AdaptiveCardInvokeResponse> {
     console.log(`Received an Adaptive Card Invoke.`);
 
@@ -1186,7 +1246,7 @@ function parseText(txt) {
       return 'restartAgent';
   } else if (txt.includes("sca")) {
       return 'getSca';
-  } else if (txt.includes("summary") || txt.includes("summarise") || txt.includes("summarize")) {
+  } else if ((txt.includes("summary") || txt.includes("summarise") || txt.includes("summarize")) && (txt.includes('config') || txt.includes('configuration') || txt.includes('agent'))) {
       return 'viewSummary';
   } else if (txt.includes("mitre") && txt.includes("group")) {
       return 'mitreGroupLookup';
@@ -1196,7 +1256,9 @@ function parseText(txt) {
     return 'showProfile';
   } else if((txt.includes('delete') || txt.includes('remove')) && txt.includes('agent')){
     return 'deleteAgent';
-  } else if(txt.includes('revoke') && (txt.includes('jwt') || txt.includes('token'))){
+  } else if(txt.includes('log') && (txt.includes('summary') || txt.includes('summarise') || (txt.includes('summarize')))){
+    return 'logSummary';
+  }else if(txt.includes('revoke') && (txt.includes('jwt') || txt.includes('token'))){
     return 'revokeJWT';
   } else{
   return 'unknown';

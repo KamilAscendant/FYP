@@ -166,6 +166,11 @@ export class TeamsBot extends TeamsActivityHandler {
           break;
         }
 
+        case "deleteAgent": {
+          await this.sendDeleteAgentCard(turnContext);
+          break;
+        }
+
         case "getSca": {
           await this.getSCACard(turnContext);
           break;
@@ -173,6 +178,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
         case "viewSummary": {
           await this.getSummary(turnContext);
+          break;
         }
 
         case "mitreGroupLookup":{
@@ -192,6 +198,12 @@ export class TeamsBot extends TeamsActivityHandler {
         case "welcome":{
           const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
           await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+          break;
+        }
+
+        case "revokeJWT":{
+          await turnContext.sendActivity('Revoking JWT');
+          await this.handleRevocation(turnContext);
           break;
         }
       }
@@ -248,7 +260,7 @@ export class TeamsBot extends TeamsActivityHandler {
       await turnContext.sendActivity("No JWT found. Credentials cleared and server address reset.");
       return;
     } else{
-      const agentsEndpoint = `https://${this.wazuhIP}:55000/agents`;
+      const agentsEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate`;
     try {
       const response = await axios.delete(agentsEndpoint, {
         headers: { 'Authorization': `Bearer ${this.jwtToken}` },
@@ -261,8 +273,29 @@ export class TeamsBot extends TeamsActivityHandler {
     this.wazuhIP=null;
     this.username=null;
     this.password=null;
+    this.jwtToken=null;
     await turnContext.sendActivity('Logged out successfully');
   }
+}
+private async handleRevocation(turnContext: TurnContext) {
+  console.log('debug');
+  if (!this.jwtToken) {
+    await turnContext.sendActivity("No JWT found.");
+    return;
+  } else{
+    const agentsEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate`;
+  try {
+    const response = await axios.delete(agentsEndpoint, {
+      headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+      httpsAgent: new https.Agent({ rejectUnauthorized: false })
+    });
+    this.jwtToken=null;
+  await turnContext.sendActivity('All JWTs for active user revoked and cleared.');
+  }catch (error) {
+    console.error('Error logging out', error);
+    await turnContext.sendActivity("An error occurred while revoking this active user's JWT.", error);
+  }
+}
 }
 
   //tries to authenticate to Wazuh using the basic authentication from the API (see reference document)
@@ -1106,6 +1139,9 @@ export class TeamsBot extends TeamsActivityHandler {
       case "sendintro":
         await this.introInteraction(turnContext);
         break;
+      case "revokeJWT":
+        await this.handleRevocation(turnContext);
+        break;
       default:
         console.log(`Unknown Adaptive Card action verb received: ${actionVerb}`);
         break;
@@ -1119,7 +1155,6 @@ export class TeamsBot extends TeamsActivityHandler {
     };
   }
 
-  
 }
 
 
@@ -1127,7 +1162,7 @@ function parseText(txt) {
   if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")) {
       console.log('debug');
       return 'greeting';
-  } else if (txt.includes("welcome") || txt.includes("start")){
+  } else if (txt.includes("welcome")){
       return 'welcome';
   } else if (txt.includes("list") && txt.includes("agents")) {
       return 'listAgents';
@@ -1159,6 +1194,10 @@ function parseText(txt) {
     return 'logout';
   }else if((txt.includes('view') || txt.includes('my') || txt.includes('show')) && (txt.includes('profile') || (txt.includes('account'))) ) {
     return 'showProfile';
+  } else if((txt.includes('delete') || txt.includes('remove')) && txt.includes('agent')){
+    return 'deleteAgent';
+  } else if(txt.includes('revoke') && (txt.includes('jwt') || txt.includes('token'))){
+    return 'revokeJWT';
   } else{
   return 'unknown';
   }

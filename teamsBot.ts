@@ -23,9 +23,9 @@ export class TeamsBot extends TeamsActivityHandler {
   runningAgents: any[] = [];
   currentAgent: number = 0;
   jwtToken: any;
-  private wazuhIP: string = '192.168.0.41' //default IP address, left in for ease of use
-  private username: string = 'wazuh' //default credentials for Wazuh installations
-  private password: string = 'wazuh'
+  private wazuhIP: string = ''
+  private username: string = '' 
+  private password: string = ''
 
   private currentAgentIndex: number = 0;
   private agentList: any[] = [];
@@ -54,31 +54,32 @@ export class TeamsBot extends TeamsActivityHandler {
     this.onMessage(async (turnContext, next) => {
       console.log("Running with Message Activity.");
 
-      let txt = turnContext.activity.text;
+      let txt = typeof turnContext.activity.text === 'string' ? turnContext.activity.text : '';
+
       const removedMentionText = TurnContext.removeRecipientMention(turnContext.activity);
 
-      if (removedMentionText) {
+      if (removedMentionText && typeof removedMentionText === 'string') {
         txt = removedMentionText.replace(/\n|\r/g, "").trim().toLowerCase(); // Normalize input to lowercase, remove newlines etc
       }
 
       console.log(txt);
       // Trigger command by IM text
-      
-        // if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")){
-        //   return 'greeting';
-        // } else if (txt.includes("list") && txt.includes("agents")) {
-        //   return 'listAgents';
-        // } else if (txt.includes("introduction") || txt.includes("intro")){
-        //   return 'introduction';
-        // } else if (txt.includes("help")){
-        //   return 'help';
-        // } else if (txt.includes("authenticate") || (txt.includes("auth"))){
-        //   return 'authenticate';
-        // } else if (txt.includes("manage") || (txt.includes("management"))){
-        //   return 'agentManagement';
-        // } else if ((txt.includes("view") && ((txt.includes("ip") || (txt.includes("server")))))){
-        //   return 'serverAddress';
-        // } 
+
+      // if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")){
+      //   return 'greeting';
+      // } else if (txt.includes("list") && txt.includes("agents")) {
+      //   return 'listAgents';
+      // } else if (txt.includes("introduction") || txt.includes("intro")){
+      //   return 'introduction';
+      // } else if (txt.includes("help")){
+      //   return 'help';
+      // } else if (txt.includes("authenticate") || (txt.includes("auth"))){
+      //   return 'authenticate';
+      // } else if (txt.includes("manage") || (txt.includes("management"))){
+      //   return 'agentManagement';
+      // } else if ((txt.includes("view") && ((txt.includes("ip") || (txt.includes("server")))))){
+      //   return 'serverAddress';
+      // } 
       const getIntention = parseText(txt);
       console.log(parseText(txt));
       switch (getIntention) {
@@ -186,41 +187,47 @@ export class TeamsBot extends TeamsActivityHandler {
           break;
         }
 
-        case "mitreGroupLookup":{
+        case "mitreGroupLookup": {
           await this.sendGroupLookupCard(turnContext);
           break;
         }
-        case "logout":{
+        case "logout": {
           await this.handleLogout(turnContext);
           break;
         }
 
-        case "showProfile":{
+        case "showProfile": {
           await this.generateProfile(turnContext);
           break;
         }
 
-        case "revokeJWT":{
+        case "revokeJWT": {
           await turnContext.sendActivity('Revoking JWT');
           await this.handleRevocation(turnContext);
           break;
         }
 
-        case "logSummary":{
+        case "logSummary": {
           await turnContext.sendActivity("Generating log summary. This can take a while.");
           await this.handleLogSummary(turnContext);
+          break;
         }
 
-        case "getManagerInfo":{
+        case "getManagerInfo": {
           await turnContext.sendActivity("Fetching Wazuh manager info");
           await this.handleGetManagerInfo(turnContext);
+          break;
+        }
+
+        case "unknown": {
+          await turnContext.sendActivity("Sorry, I didn't understand that. Please use 'Help' to view a list of commands");
         }
       }
 
 
       await next();
     });
-    
+
     //automatic message on greeting new member in chat. This is from the template.
     this.onMembersAdded(async (context, next) => {
       const membersAdded = context.activity.membersAdded;
@@ -248,7 +255,7 @@ export class TeamsBot extends TeamsActivityHandler {
         headers: { 'Authorization': `Bearer ${this.jwtToken}` },
         httpsAgent: new https.Agent({ rejectUnauthorized: false })
       });
-  
+
       const managerInfo = response.data.data.affected_items[0];
       if (managerInfo) {
         let cardTemplate = {
@@ -305,7 +312,7 @@ export class TeamsBot extends TeamsActivityHandler {
           "type": "AdaptiveCard",
           "version": "1.4",
         };
-  
+
         await turnContext.sendActivity({
           attachments: [CardFactory.adaptiveCard(cardTemplate)]
         });
@@ -317,13 +324,13 @@ export class TeamsBot extends TeamsActivityHandler {
       await turnContext.sendActivity("An error occurred.");
     }
   }
-  
+
 
   private async handleHelp(turnContext: TurnContext) {
     const userManualUrl = "https://docs.google.com/document/d/1ROWjphhlBiYXnxizcDC__5Aaxw8OzukGxZwlzSa5xh0/edit?usp=sharing";
     const userManualText = "Click here to access the User Manual for WazuhBot.";
     await turnContext.sendActivity(`Sure! Here is the user manual for WazuhBot: [User Manual](${userManualUrl})`);
-}
+  }
   private async introInteraction(turnContext: TurnContext) {
     const userName = turnContext.activity.from.name || 'user'; // Fallback to 'user' if the name isn't available
     const time = new Date().getHours();
@@ -347,44 +354,44 @@ export class TeamsBot extends TeamsActivityHandler {
       this.password = null;
       await turnContext.sendActivity("No JWT found. Credentials cleared and server address reset.");
       return;
-    } else{
+    } else {
       const agentsEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate`;
-    try {
-      const response = await axios.delete(agentsEndpoint, {
-        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
-      });
-    }catch (error) {
-      console.error('Error logging out', error);
-      await turnContext.sendActivity("An error occurred while logging out.", error);
+      try {
+        const response = await axios.delete(agentsEndpoint, {
+          headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+          httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        });
+      } catch (error) {
+        console.error('Error logging out', error);
+        await turnContext.sendActivity("An error occurred while logging out.", error);
+      }
+      this.wazuhIP = null;
+      this.username = null;
+      this.password = null;
+      this.jwtToken = null;
+      await turnContext.sendActivity('Logged out successfully');
     }
-    this.wazuhIP=null;
-    this.username=null;
-    this.password=null;
-    this.jwtToken=null;
-    await turnContext.sendActivity('Logged out successfully');
   }
-}
-private async handleRevocation(turnContext: TurnContext) {
-  console.log('debug');
-  if (!this.jwtToken) {
-    await turnContext.sendActivity("No JWT found.");
-    return;
-  } else{
-    const agentsEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate`;
-  try {
-    const response = await axios.delete(agentsEndpoint, {
-      headers: { 'Authorization': `Bearer ${this.jwtToken}` },
-      httpsAgent: new https.Agent({ rejectUnauthorized: false })
-    });
-    this.jwtToken=null;
-  await turnContext.sendActivity('All JWTs for active user revoked and cleared.');
-  }catch (error) {
-    console.error('Error logging out', error);
-    await turnContext.sendActivity("An error occurred while revoking this active user's JWT.", error);
+  private async handleRevocation(turnContext: TurnContext) {
+    console.log('debug');
+    if (!this.jwtToken) {
+      await turnContext.sendActivity("No JWT found.");
+      return;
+    } else {
+      const agentsEndpoint = `https://${this.wazuhIP}:55000/security/user/authenticate`;
+      try {
+        const response = await axios.delete(agentsEndpoint, {
+          headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+          httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        });
+        this.jwtToken = null;
+        await turnContext.sendActivity('All JWTs for active user revoked and cleared.');
+      } catch (error) {
+        console.error('Error logging out', error);
+        await turnContext.sendActivity("An error occurred while revoking this active user's JWT.", error);
+      }
+    }
   }
-}
-}
 
   //tries to authenticate to Wazuh using the basic authentication from the API (see reference document)
   private async authenticateUser(turnContext: TurnContext, username, password) {
@@ -404,7 +411,7 @@ private async handleRevocation(turnContext: TurnContext) {
       const jwtToken = response.data.data.token;
       console.log('JWT token received:', jwtToken);
       this.jwtToken = jwtToken;
-      if(!(!jwtToken)){
+      if (!(!jwtToken)) {
         await turnContext.sendActivity('Authentication Successful!');
       };
       setTimeout(() => {
@@ -521,7 +528,7 @@ private async handleRevocation(turnContext: TurnContext) {
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(agentCard)] });
   }
 
-  private async getSummary(turnContext: TurnContext): Promise<void>{
+  private async getSummary(turnContext: TurnContext): Promise<void> {
     if (!this.jwtToken) {
       await turnContext.sendActivity("Authentication required. Please use 'authenticate' first.");
       return;
@@ -538,70 +545,70 @@ private async handleRevocation(turnContext: TurnContext) {
         // Assuming we only display the first item for simplicity
         const summaryDisplay = summary[0];
         let cardTemplate = {
-            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-            "type": "AdaptiveCard",
-            "version": "1.4",
-            "body": [
-              {
-                "type": "TextBlock",
-                "text": "Connection Summary",
-                "wrap": true,
-                "size": "Large",
-                "weight": "Bolder"
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "type": "AdaptiveCard",
+          "version": "1.4",
+          "body": [
+            {
+              "type": "TextBlock",
+              "text": "Connection Summary",
+              "wrap": true,
+              "size": "Large",
+              "weight": "Bolder"
             },
             {
-                "type": "TextBlock",
-                "text": `Active: ${summary.connection.active}`,
-                "wrap": true
+              "type": "TextBlock",
+              "text": `Active: ${summary.connection.active}`,
+              "wrap": true
             },
             {
-                "type": "TextBlock",
-                "text": `Disconnected: ${summary.connection.disconnected}`,
-                "wrap": true
+              "type": "TextBlock",
+              "text": `Disconnected: ${summary.connection.disconnected}`,
+              "wrap": true
             },
             {
-                "type": "TextBlock",
-                "text": `Never Connected: ${summary.connection.never_connected}`,
-                "wrap": true
+              "type": "TextBlock",
+              "text": `Never Connected: ${summary.connection.never_connected}`,
+              "wrap": true
             },
             {
-                "type": "TextBlock",
-                "text": `Pending: ${summary.connection.pending}`,
-                "wrap": true
+              "type": "TextBlock",
+              "text": `Pending: ${summary.connection.pending}`,
+              "wrap": true
             },
             {
-                "type": "TextBlock",
-                "text": `Total Connections: ${summary.connection.total}`,
-                "wrap": true
+              "type": "TextBlock",
+              "text": `Total Connections: ${summary.connection.total}`,
+              "wrap": true
             },
             {
-                "type": "TextBlock",
-                "text": "Config Summary",
-                "wrap": true,
-                "size": "Large",
-                "weight": "Bolder",
-                "separator": true
+              "type": "TextBlock",
+              "text": "Config Summary",
+              "wrap": true,
+              "size": "Large",
+              "weight": "Bolder",
+              "separator": true
             },
             {
-                "type": "TextBlock",
-                "text": `Synced: ${summary.configuration.synced}`,
-                "wrap": true
+              "type": "TextBlock",
+              "text": `Synced: ${summary.configuration.synced}`,
+              "wrap": true
             },
             {
-                "type": "TextBlock",
-                "text": `Not Synced: ${summary.configuration.not_synced}`,
-                "wrap": true
+              "type": "TextBlock",
+              "text": `Not Synced: ${summary.configuration.not_synced}`,
+              "wrap": true
             },
             {
-                "type": "TextBlock",
-                "text": `Total Configurations: ${summary.configuration.total}`,
-                "wrap": true
+              "type": "TextBlock",
+              "text": `Total Configurations: ${summary.configuration.total}`,
+              "wrap": true
             }
-            ]
+          ]
         };
 
         await turnContext.sendActivity({
-            attachments: [CardFactory.adaptiveCard(cardTemplate)]
+          attachments: [CardFactory.adaptiveCard(cardTemplate)]
         });
       } else {
         await turnContext.sendActivity("No summary found.");
@@ -610,8 +617,8 @@ private async handleRevocation(turnContext: TurnContext) {
       console.error('Error fetching summary', error);
       await turnContext.sendActivity("An error occurred while fetching the agent summary.");
     }
-}
-  
+  }
+
 
   //handle the changeIP card being invoked
   private async handleChangeIPResponse(turnContext: TurnContext, data: any) {
@@ -978,7 +985,7 @@ private async handleRevocation(turnContext: TurnContext) {
 
       this.groupList = response.data.data.affected_items;
       this.currentGroupIndex = 0;
-       
+
       if (this.groupList.length > 0) {
         // Call method to send Adaptive Card for the current agent
         await this.sendGroupInfoCard(turnContext);
@@ -1086,12 +1093,12 @@ private async handleRevocation(turnContext: TurnContext) {
         }
       ]
     };
-    if (this.username == null && this.password == null && this.wazuhIP == null && isAuthenticated == 'False'){
+    if (this.username == null && this.password == null && this.wazuhIP == null && isAuthenticated == 'False') {
       await turnContext.sendActivity('No details found.')
-    } else{
+    } else {
       await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(profileCard)] });
     }
-}
+  }
 
   private async sendGroupDetailCard(turnContext: TurnContext) {
     const group = this.groupList[this.currentGroupIndex];
@@ -1122,7 +1129,7 @@ private async handleRevocation(turnContext: TurnContext) {
         {
           "type": "TextBlock",
           "text": `Software: ${group.software}`,
-          "wrap:" : true
+          "wrap:": true
         }
       ],
       "actions": [
@@ -1151,57 +1158,57 @@ private async handleRevocation(turnContext: TurnContext) {
 
   private async handleLogSummary(turnContext: TurnContext): Promise<void> {
     if (!this.jwtToken) {
-        await turnContext.sendActivity("Authentication required. Please authenticate first.");
-        return;
+      await turnContext.sendActivity("Authentication required. Please authenticate first.");
+      return;
     }
     const endpoint = `https://${this.wazuhIP}:55000/manager/logs/summary`; // Modify as per actual API
     try {
-        const response = await axios.get(endpoint, {
-            headers: { 'Authorization': `Bearer ${this.jwtToken}` },
-            httpsAgent: new https.Agent({ rejectUnauthorized: false })
-        });
+      const response = await axios.get(endpoint, {
+        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+      });
 
-        const logSummary = response.data.data.affected_items;
-        await this.sendLogSummaryCard(turnContext, logSummary);
+      const logSummary = response.data.data.affected_items;
+      await this.sendLogSummaryCard(turnContext, logSummary);
     } catch (error) {
-        console.error('Error fetching log summary:', error);
-        await turnContext.sendActivity("An error occurred while retrieving the log summary.");
+      console.error('Error fetching log summary:', error);
+      await turnContext.sendActivity("An error occurred while retrieving the log summary.");
     }
-}
+  }
 
-private async sendLogSummaryCard(turnContext: TurnContext, logSummary: any[]): Promise<void> {
-  const cardElements = logSummary.map(log => {
+  private async sendLogSummaryCard(turnContext: TurnContext, logSummary: any[]): Promise<void> {
+    const cardElements = logSummary.map(log => {
       return {
-          "type": "FactSet",
-          "facts": [
-              { "title": "Module:", "value": Object.keys(log)[0] },
-              { "title": "Total:", "value": log[Object.keys(log)[0]].all.toString() },
-              { "title": "Info:", "value": log[Object.keys(log)[0]].info.toString() },
-              { "title": "Errors:", "value": log[Object.keys(log)[0]].error.toString() },
-              { "title": "Critical:", "value": log[Object.keys(log)[0]].critical.toString() },
-              { "title": "Warnings:", "value": log[Object.keys(log)[0]].warning.toString() },
-              { "title": "Debugs:", "value": log[Object.keys(log)[0]].debug.toString() }
-          ]
+        "type": "FactSet",
+        "facts": [
+          { "title": "Module:", "value": Object.keys(log)[0] },
+          { "title": "Total:", "value": log[Object.keys(log)[0]].all.toString() },
+          { "title": "Info:", "value": log[Object.keys(log)[0]].info.toString() },
+          { "title": "Errors:", "value": log[Object.keys(log)[0]].error.toString() },
+          { "title": "Critical:", "value": log[Object.keys(log)[0]].critical.toString() },
+          { "title": "Warnings:", "value": log[Object.keys(log)[0]].warning.toString() },
+          { "title": "Debugs:", "value": log[Object.keys(log)[0]].debug.toString() }
+        ]
       };
-  });
+    });
 
-  const logSummaryCard = {
+    const logSummaryCard = {
       "type": "AdaptiveCard",
       "body": [
-          {
-              "type": "TextBlock",
-              "text": "Log Summary",
-              "size": "Large",
-              "weight": "Bolder"
-          },
-          ...cardElements
+        {
+          "type": "TextBlock",
+          "text": "Log Summary",
+          "size": "Large",
+          "weight": "Bolder"
+        },
+        ...cardElements
       ],
       "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
       "version": "1.4"
-  };
+    };
 
-  await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(logSummaryCard)] });
-}
+    await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(logSummaryCard)] });
+  }
 
 
   protected async onAdaptiveCardInvoke(turnContext: TurnContext, invokeValue: AdaptiveCardInvokeValue): Promise<AdaptiveCardInvokeResponse> {
@@ -1213,7 +1220,6 @@ private async sendLogSummaryCard(turnContext: TurnContext, logSummary: any[]): P
     switch (actionVerb) {
       case 'changeip':
         console.log(`Action Data: ${JSON.stringify(invokeValue.action.data)}`);
-        // Call the method to handle the IP change with the input data
         await this.handleChangeIPResponse(turnContext, invokeValue.action.data);
         break;
       case 'changedetails':
@@ -1254,11 +1260,11 @@ private async sendLogSummaryCard(turnContext: TurnContext, logSummary: any[]): P
         await this.groupLookup(turnContext, invokeValue.action.data);
         break;
       case "nextgroup":
-        this.currentGroupIndex = Math.min(this.currentGroupIndex +1, this.groupList.length -1);
+        this.currentGroupIndex = Math.min(this.currentGroupIndex + 1, this.groupList.length - 1);
         await this.sendGroupInfoCard(turnContext);
         break;
       case "prevgroup":
-        this.currentGroupIndex = Math.max(this.currentGroupIndex-1, 0);
+        this.currentGroupIndex = Math.max(this.currentGroupIndex - 1, 0);
         await this.sendGroupInfoCard(turnContext);
         break;
       case "groupdetails":
@@ -1278,7 +1284,7 @@ private async sendLogSummaryCard(turnContext: TurnContext, logSummary: any[]): P
         break;
       case "logout":
         await turnContext.sendActivity('Logging out.');
-        await this.handleLogout;
+        await this.handleLogout(turnContext);
         break;
       case "sendintro":
         await this.introInteraction(turnContext);
@@ -1304,52 +1310,52 @@ private async sendLogSummaryCard(turnContext: TurnContext, logSummary: any[]): P
 
 function parseText(txt) {
   if (txt.includes("hello") || txt.includes("hi") || txt.includes("hey")) {
-      console.log('debug');
-      return 'greeting';
-  } else if (txt.includes("welcome")){
-      return 'greeting';
+    console.log('debug');
+    return 'greeting';
+  } else if (txt.includes("welcome")) {
+    return 'greeting';
   } else if (txt.includes("list") && txt.includes("agents")) {
-      return 'listAgents';
+    return 'listAgents';
   } else if (txt.includes("introduction") || txt.includes("intro") || txt.includes("introduce")) {
-      return 'introduction';
+    return 'introduction';
   } else if (txt.includes("help")) {
-      return 'help';
+    return 'help';
   } else if (txt.includes("authenticate") || txt.includes("auth")) {
-      return 'authenticate';
+    return 'authenticate';
   } else if ((txt.includes("agent") || txt.includes("agents")) && (txt.includes("manage") || txt.includes("management"))) {
-      return 'agentManagement';
+    return 'agentManagement';
   } else if (txt.includes("view") && (txt.includes("ip") || txt.includes("server") || txt.includes("address"))) {
-      return 'serverAddress';
+    return 'serverAddress';
   } else if (txt.includes("change") && (txt.includes("ip") || txt.includes("address"))) {
-      return 'changeIP';
+    return 'changeIP';
   } else if ((txt.includes("change") || txt.includes("update")) && (txt.includes("details") || txt.includes("credentials"))) {
-      return 'updateDetails';
+    return 'updateDetails';
   } else if (txt.includes("view") && (txt.includes("username") || txt.includes("credentials"))) {
-      return 'username';
+    return 'username';
   } else if ((txt.includes("restart") || txt.includes("reboot")) && txt.includes("agent")) {
-      return 'restartAgent';
+    return 'restartAgent';
   } else if (txt.includes("sca")) {
-      return 'getSca';
+    return 'getSca';
   } else if ((txt.includes("summary") || txt.includes("summarise") || txt.includes("summarize")) && (txt.includes('config') || txt.includes('configuration') || txt.includes('agent'))) {
-      return 'viewSummary';
+    return 'viewSummary';
   } else if (txt.includes("mitre") && txt.includes("group")) {
-      return 'mitreGroupLookup';
+    return 'mitreGroupLookup';
   } else if (txt.includes("logout") || (txt.includes("log") && (txt.includes("out")))) {
     return 'logout';
-  }else if((txt.includes('view') || txt.includes('my') || txt.includes('show')) && (txt.includes('profile') || (txt.includes('account'))) ) {
+  } else if ((txt.includes('view') || txt.includes('my') || txt.includes('show')) && (txt.includes('profile') || (txt.includes('account')))) {
     return 'showProfile';
-  } else if((txt.includes('delete') || txt.includes('remove')) && txt.includes('agent')){
+  } else if ((txt.includes('delete') || txt.includes('remove')) && txt.includes('agent')) {
     return 'deleteAgent';
-  } else if(txt.includes('log') && (txt.includes('summary') || txt.includes('summarise') || (txt.includes('summarize')))){
+  } else if (txt.includes('log') && (txt.includes('summary') || txt.includes('summarise') || (txt.includes('summarize')))) {
     return 'logSummary';
-  }else if(txt.includes('revoke') && (txt.includes('jwt') || txt.includes('token'))){
+  } else if (txt.includes('revoke') && (txt.includes('jwt') || txt.includes('token'))) {
     return 'revokeJWT';
-  }else if(txt.includes('manager') && txt.includes('info')){
+  } else if (txt.includes('manager') && txt.includes('info')) {
     return 'getManagerInfo'
-  } else{
-  return 'unknown';
+  } else {
+    return 'unknown';
   }
 
-  
+
 }
 

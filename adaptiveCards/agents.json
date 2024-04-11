@@ -49,12 +49,6 @@
     },
     {
       "type": "Action.Execute",
-      "title": "Stop Agent",
-      "verb": "stopagent",
-      "style": "destructive"
-    },
-    {
-      "type": "Action.Execute",
       "title": "Delete Agent",
       "verb": "deleteagent",
       "style": "destructive"

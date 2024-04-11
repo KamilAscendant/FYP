@@ -179,6 +179,13 @@ export class TeamsBot extends TeamsActivityHandler {
           await this.sendGroupLookupCard(turnContext);
           break;
         }
+        case "logout":{
+          await this.handleLogout(turnContext);
+        }
+
+        case "showProfile":{
+          await this.generateProfile(turnContext);
+        }
       }
 
 
@@ -224,6 +231,27 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
 
+
+  private async handleLogout(turnContext: TurnContext) {
+    if (!this.jwtToken) {
+      this.wazuhIP = null;
+      this.username = null;
+      this.password = null;
+      await turnContext.sendActivity("No JWT found. Credentials cleared and server address reset.");
+      return;
+    } else{
+      const agentsEndpoint = `https://${this.wazuhIP}:55000/agents`;
+    try {
+      const response = await axios.delete(agentsEndpoint, {
+        headers: { 'Authorization': `Bearer ${this.jwtToken}` },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+      });
+    }catch (error) {
+      console.error('Error logging out', error);
+      await turnContext.sendActivity("An error occurred while logging out.", error);
+    }
+  }
+}
 
   //tries to authenticate to Wazuh using the basic authentication from the API (see reference document)
   private async authenticateUser(username, password) {
@@ -880,6 +908,49 @@ export class TeamsBot extends TeamsActivityHandler {
     await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(simpleGroupCard)] });
   }
 
+  private async generateProfile(turnContext: TurnContext) {
+    const isAuthenticated = this.jwtToken ? "Authenticated: True" : "Authenticated: False";
+  const profileCard = {
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.4",
+    "body": [
+      {
+        "type": "TextBlock",
+        "size": "Medium",
+        "weight": "Bolder",
+        "text": "Profile Information"
+      },
+      {
+        "type": "FactSet",
+        "facts": [
+          {
+            "title": "Wazuh Server:",
+            "value": this.wazuhIP
+          },
+          {
+            "title": "Username:",
+            "value": this.username
+          },
+          {
+            "title": "Authentication Status:",
+            "value": isAuthenticated
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "type": "Action.Submit",
+        "title": "Log Out",
+        "data": { "action": "logout" }
+      }
+    ]
+  };
+
+  await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(profileCard)] });
+}
+
   private async sendGroupDetailCard(turnContext: TurnContext) {
     const group = this.groupList[this.currentGroupIndex];
     const simpleGroupCard = {
@@ -1054,8 +1125,12 @@ function parseText(txt) {
       return 'viewSummary';
   } else if (txt.includes("mitre") && txt.includes("group")) {
       return 'mitreGroupLookup';
+  } else if (txt.includes("logout") || (txt.incudes("log") && (txt.includes("out")))) {
+    return 'logout';
+  }else if((txt.includes('view') || txt.includes('my') || txt.includes('show')) && (txt.includes('profile') || (txt.includes('account'))) ) {
+    return 'showProfile';
   } else{
-    return 'unknown';
+  return 'unknown';
   }
 
   

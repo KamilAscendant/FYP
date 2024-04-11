@@ -84,6 +84,11 @@ export class TeamsBot extends TeamsActivityHandler {
       switch (getIntention) {
         case "greeting": {
           console.log('hmm'); //debugging
+          const userName = turnContext.activity.from.name || 'user'; // Fallback to 'user' if the name isn't available
+          const time = new Date().getHours();
+          const timedHello = time < 12 ? 'Good morning' : time < 18 ? 'Good afternoon' : 'Good evening';
+          const introMessage = `**${timedHello}, ${userName}! Welcome to WazuhBot**`
+          await turnContext.sendActivity(introMessage);
           const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
           await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
           break;
@@ -192,12 +197,6 @@ export class TeamsBot extends TeamsActivityHandler {
 
         case "showProfile":{
           await this.generateProfile(turnContext);
-          break;
-        }
-
-        case "welcome":{
-          const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
-          await turnContext.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
           break;
         }
 
@@ -1223,7 +1222,7 @@ function parseText(txt) {
       console.log('debug');
       return 'greeting';
   } else if (txt.includes("welcome")){
-      return 'welcome';
+      return 'greeting';
   } else if (txt.includes("list") && txt.includes("agents")) {
       return 'listAgents';
   } else if (txt.includes("introduction") || txt.includes("intro") || txt.includes("introduce")) {
